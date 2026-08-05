@@ -1,13 +1,11 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
-# Vercel deploys on its own; this only gates correctness, since a Vercel build
-# runs `npm run build` without the test suite.
+# Pull requests only. Pushes to main are covered by deploy.yml, which runs the
+# same test and build steps before publishing.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
