@@ -41,7 +41,7 @@ export const CONTENT = {
       'If you respond incorrectly, choose the correct side before continuing.',
     ],
     demoCaption: 'Try it now:',
-    demoStimulus: 'Skilled person',
+    demoStimulus: 'Proficient',
     demoLeftCategory: 'Competent',
     demoRightCategory: 'Incompetent',
     demoHint: 'This belongs on the left.',

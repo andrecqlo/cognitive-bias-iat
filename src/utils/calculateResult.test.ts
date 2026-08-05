@@ -5,7 +5,7 @@ import type { TrialRecord } from '../types/activity';
 function makeTrial(overrides: Partial<TrialRecord>): TrialRecord {
   return {
     id: overrides.id ?? `trial-${Math.random()}`,
-    stimulus: 'Skilled person',
+    stimulus: 'Proficient',
     category: 'competent',
     correctSide: 'left',
     block: 'A',

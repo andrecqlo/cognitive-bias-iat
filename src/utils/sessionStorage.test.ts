@@ -11,7 +11,7 @@ function makeSession(): StoredSession {
     trialRecords: [
       {
         id: 'trial-1',
-        stimulus: 'Skilled person',
+        stimulus: 'Proficient',
         category: 'competent',
         correctSide: 'left',
         block: 'A',

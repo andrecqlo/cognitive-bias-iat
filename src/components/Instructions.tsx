@@ -70,7 +70,7 @@ function Demonstration({ prefersReducedMotion }: { prefersReducedMotion: boolean
             <span aria-hidden="true" className="mr-1">
               ✓
             </span>
-            That’s it. “Skilled person” belongs with “Competent”, so you tap the left side.
+            That’s it. “Proficient” belongs with “Competent”, so you tap the left side.
           </span>
         )}
         {state === 'incorrect' && (
@@ -78,7 +78,7 @@ function Demonstration({ prefersReducedMotion }: { prefersReducedMotion: boolean
             <span aria-hidden="true" className="mr-1 text-signal">
               ✕
             </span>
-            In the activity you would correct this before moving on. “Skilled person” belongs with “Competent” on the
+            In the activity you would correct this before moving on. “Proficient” belongs with “Competent” on the
             left.
           </span>
         )}

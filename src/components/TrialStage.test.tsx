@@ -6,7 +6,7 @@ import type { Trial } from '../types/activity';
 
 const TRIAL: Trial = {
   id: 'trial-1',
-  stimulus: 'Person without ADHD',
+  stimulus: 'Typical learner',
   category: 'neurotypical',
   correctSide: 'right',
   block: 'A',
@@ -43,7 +43,7 @@ describe('TrialStage', () => {
   it('keeps both category pairs and the counter visible', () => {
     renderStage();
 
-    expect(screen.getByText('Person without ADHD')).toBeInTheDocument();
+    expect(screen.getByText('Typical learner')).toBeInTheDocument();
     expect(screen.getByText(/Round 1 of 2 · Item 3 of 26/)).toBeInTheDocument();
     // Once as a heading, once as a response-zone label.
     expect(screen.getAllByText('Neurodivergent')).toHaveLength(2);
