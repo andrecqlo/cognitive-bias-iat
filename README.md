@@ -117,23 +117,29 @@ The build output in `dist/` is a plain static site. No environment variables are
 
 ### Vercel
 
-1. Push this repository to GitHub.
-2. At [vercel.com/new](https://vercel.com/new), import the repository.
-3. Vercel detects Vite automatically — build command `npm run build`, output directory `dist`.
-4. Deploy. The free `*.vercel.app` URL is live immediately, and later pushes to `main` redeploy.
+This is the deployment path in use.
+
+1. At [vercel.com/new](https://vercel.com/new), import this repository.
+2. Vercel detects Vite automatically — build command `npm run build`, output directory `dist`. Leave the
+   defaults; no environment variables are needed.
+3. Deploy. The free `*.vercel.app` URL is live immediately, and later pushes to `main` redeploy.
+
+`vercel.json` sets response headers: `X-Robots-Tag: noindex, nofollow` to keep the activity out of search
+results, plus `X-Frame-Options`, `X-Content-Type-Options` and `Referrer-Policy`. These reinforce the
+`noindex` meta tag in `index.html`, but they are not access control — anyone with the URL can open the
+activity. Vercel's free tier does not offer authentication, so treat the URL as the only barrier and share
+it directly with participants rather than posting it somewhere durable.
+
+Vercel builds without running the test suite, so `.github/workflows/ci.yml` runs `npm test` and
+`npm run build` on every push and pull request. Watch that check rather than assuming a green deploy means
+passing tests.
 
 ### GitHub Pages
 
-`.github/workflows/deploy.yml` builds and publishes on every push to `main`.
-
-1. In the repository, open **Settings → Pages**.
-2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-3. Push to `main`, or run the workflow manually from the **Actions** tab.
-4. The site appears at `https://<user>.github.io/<repository>/`.
-
-Asset paths are relative (`base: './'` in `vite.config.ts`), so the same build works at a domain root or in a
-repository subpath. Note that a private repository needs a paid plan to publish with Pages; Vercel deploys
-private repositories on its free tier.
+Not in use — Pages is disabled at the enterprise level on this account. If it is ever enabled, the site
+needs only a workflow using `actions/upload-pages-artifact` and `actions/deploy-pages`, with **Settings →
+Pages → Source** set to **GitHub Actions**. Asset paths are already relative (`base: './'` in
+`vite.config.ts`), so the same build works at a domain root or in a repository subpath.
 
 ### Netlify or Cloudflare Pages
 
