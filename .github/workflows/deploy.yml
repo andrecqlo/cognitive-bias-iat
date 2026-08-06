@@ -18,25 +18,51 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      stale: ${{ steps.freshness.outputs.stale }}
     steps:
       - uses: actions/checkout@v4
 
+      # Runs are not always delivered promptly or in order: a push run has
+      # arrived half an hour late here and published its older commit over a
+      # newer deployment. Concurrency cannot catch that, because by then the
+      # newer run has already finished. So check the commit is still the tip
+      # and stop if it is not.
+      - name: Check this commit is still the tip of main
+        id: freshness
+        run: |
+          git fetch --depth=1 origin main
+          tip="$(git rev-parse origin/main)"
+          if [ "$tip" = "${{ github.sha }}" ]; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping deploy: ${{ github.sha }} is behind origin/main ($tip)"
+          fi
+
       - uses: actions/setup-node@v4
+        if: steps.freshness.outputs.stale == 'false'
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
+        if: steps.freshness.outputs.stale == 'false'
       - run: npm test
+        if: steps.freshness.outputs.stale == 'false'
       - run: npm run build
+        if: steps.freshness.outputs.stale == 'false'
 
       - uses: actions/configure-pages@v5
+        if: steps.freshness.outputs.stale == 'false'
       - uses: actions/upload-pages-artifact@v3
+        if: steps.freshness.outputs.stale == 'false'
         with:
           path: dist
 
   deploy:
     needs: build
+    if: needs.build.outputs.stale == 'false'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
