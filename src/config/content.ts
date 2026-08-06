@@ -69,7 +69,7 @@ export const CONTENT = {
   transition: {
     heading: 'Nice work—the categories are switching.',
     body: 'Take a moment to notice the new positions before continuing.',
-    practiceLabel: 'A few practice trials with the new pairing:',
+    practiceLabel: 'Some practice trials with the new pairing:',
     startFinalButton: 'Start final round',
   },
   interruption: {
