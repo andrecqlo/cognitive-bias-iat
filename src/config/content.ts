@@ -10,19 +10,18 @@
 export const CONTENT = {
   landing: {
     heading: 'Hidden Associations',
-    subtitle: 'Short activities based on the Implicit Association Test.',
+    subtitle: 'Detecting subconscious associations based on the implicit association test.',
     intro:
-      'Some pairs of ideas feel more connected than others, and that shows up in how quickly you can sort them. These activities measure that, and are designed to prompt reflection rather than to label or judge you.',
-    whatIsIatToggle: 'What is an Implicit Association Test?',
-    whatIsIat:
-      'An Implicit Association Test asks you to sort words into categories as fast as you can, then changes which categories share a button. Most people are quicker when the pairing matches an association they already hold, and that difference in speed is what gets measured. It says nothing about what you believe or how you behave—only about how quickly certain ideas came together on one occasion. Scores are not stable: people who repeat one often get a different answer.',
+      'People connect some ideas more readily than others, often without meaning to, and these activities can surface a few of those hidden preferences. Hold the result loosely: it shifts with attention, tiredness and the order you happen to see things in, people who repeat one often get a different answer, and it says nothing about how you actually behave. Where it earns its keep is as a prompt to reflect on where your own thinking might lean—the reflection is the useful part, not the score.',
     chooseHeading: 'Choose an activity',
     chooseHint: 'Each one uses the same method with a different set of words.',
     facts: ['Takes 5–7 minutes', 'Works on mobile and desktop', 'No sign-up', 'Your result stays on your device'],
     startButton: 'Start',
+    /** The one explainer on the page: what the method is and what you will do.
+     * Split across two toggles it repeated itself. */
     howItWorksToggle: 'How does this work?',
     howItWorks:
-      'You sort words into categories as quickly as you can. The category pairings change part-way through. At the end you choose whether to see a private comparison of your response times.',
+      'You sort words into categories as quickly as you can, and part-way through the pairings change. Most people are quicker when a pairing matches an association they already hold, and that gap in speed is what gets measured. At the end you choose whether to see a private comparison of your response times.',
   },
   information: {
     heading: 'Before you begin',

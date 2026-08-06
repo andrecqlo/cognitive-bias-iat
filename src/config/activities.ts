@@ -46,8 +46,6 @@ export const ATTRIBUTE_SLOTS = ['attributeA', 'attributeB'] as const;
 
 export interface ActivityDefinition {
   id: string;
-  /** Shown above the title on the landing card and the activity itself. */
-  eyebrow: string;
   title: string;
   /** One line on the picker card, enough to choose by. */
   summary: string;
@@ -68,7 +66,6 @@ export interface ActivityDefinition {
 
 const NEURODIVERSITY: ActivityDefinition = {
   id: 'neurodiversity',
-  eyebrow: 'Neurodiversity',
   title: 'Neurodiversity and competence',
   summary: 'Do “Neurodivergent” and “Competent” feel as connected to you as “Neurotypical” and “Competent”?',
   labels: {

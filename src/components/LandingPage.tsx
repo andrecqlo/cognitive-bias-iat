@@ -28,9 +28,10 @@ export function LandingPage({ onStart, onClearSession, sessionClearedNotice }: L
       <p className="mt-4 text-xl leading-snug text-ink-soft">{landing.subtitle}</p>
       <p className="mt-5 text-base leading-relaxed text-muted">{landing.intro}</p>
 
+      {/* One explainer, sitting with the intro it elaborates. */}
       <div className="mt-6">
-        <Disclosure summary={landing.whatIsIatToggle}>
-          <p className="leading-relaxed">{landing.whatIsIat}</p>
+        <Disclosure summary={landing.howItWorksToggle}>
+          <p className="leading-relaxed">{landing.howItWorks}</p>
         </Disclosure>
       </div>
 
@@ -54,8 +55,7 @@ export function LandingPage({ onStart, onClearSession, sessionClearedNotice }: L
         <ul className="mt-4 space-y-3">
           {ACTIVITIES.map((activity) => (
             <li key={activity.id} className="rounded-[8px] border border-line bg-surface px-4 py-4">
-              <p className="text-xs font-semibold tracking-wide text-signal uppercase">{activity.eyebrow}</p>
-              <h3 className="mt-1 text-base font-semibold text-ink">{activity.title}</h3>
+              <h3 className="text-base font-semibold text-ink">{activity.title}</h3>
               <p className="mt-1 text-sm leading-relaxed text-muted">{activity.summary}</p>
               <Button
                 className="mt-4 w-full sm:w-auto"
@@ -68,12 +68,6 @@ export function LandingPage({ onStart, onClearSession, sessionClearedNotice }: L
           ))}
         </ul>
       </section>
-
-      <div className="mt-8">
-        <Disclosure summary={landing.howItWorksToggle}>
-          <p className="leading-relaxed">{landing.howItWorks}</p>
-        </Disclosure>
-      </div>
 
       <footer className="mt-10 border-t border-line pt-5">
         <Button variant="quiet" onClick={onClearSession} className="px-0">
