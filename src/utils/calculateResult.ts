@@ -44,22 +44,31 @@ export interface RoundSummary {
 
 export function summariseRound(trials: TrialRecord[], pairing: Pairing): RoundSummary {
   const { minValidMs } = ACTIVITY_CONFIG.timing;
-  const roundTrials = trials.filter((trial) => trial.block === pairing && !trial.interrupted);
+  // In presentation order, because the warm-up window is the round's opening
+  // trials as the participant met them.
+  const presented = trials.filter((trial) => trial.block === pairing);
+  const attempted = presented.filter((trial) => !trial.interrupted);
   // Accuracy covers the whole round, including the opening trials, because
   // struggling to learn the pairing is exactly what it should capture.
-  const correct = roundTrials.filter((trial) => trial.firstResponseCorrect);
+  const correct = attempted.filter((trial) => trial.firstResponseCorrect);
   // The D-score does not, so both rounds are scored from an equally warm start.
-  const scored = roundTrials.slice(ACTIVITY_CONFIG.warmUpTrialsDropped);
+  // Dropped by position rather than after interrupted trials are removed: doing
+  // it the other way round makes the window swallow real trials whenever
+  // something interrupted the opening ones, and by a different amount in each
+  // round, which is exactly the asymmetry this is here to remove.
+  const scored = presented
+    .slice(ACTIVITY_CONFIG.warmUpTrialsDropped)
+    .filter((trial) => !trial.interrupted);
   const usable = scored.filter(isUsableTrial);
   const reactionTimes = usable.map((trial) => trial.reactionTimeMs);
 
   return {
     pairing,
-    totalTrials: roundTrials.length,
+    totalTrials: attempted.length,
     scoredTrials: scored.length,
     usableTrials: usable.length,
     meanReactionTimeMs: mean(reactionTimes),
-    accuracy: roundTrials.length > 0 ? correct.length / roundTrials.length : null,
+    accuracy: attempted.length > 0 ? correct.length / attempted.length : null,
     tooFastTrials: scored.filter((trial) => trial.reactionTimeMs < minValidMs).length,
     reactionTimes,
   };

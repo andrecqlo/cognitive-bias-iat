@@ -329,9 +329,8 @@ export function categoriesForPairing(pairing: Pairing): {
   };
 }
 
-function randomSideAssignment(pairing: Pairing): SideAssignment {
+function sideAssignmentFor(pairing: Pairing, targetAOnLeft: boolean): SideAssignment {
   const { withTargetA, withTargetB } = categoriesForPairing(pairing);
-  const targetAOnLeft = Math.random() < 0.5;
   return {
     pairing,
     leftCategories: targetAOnLeft ? withTargetA : withTargetB,
@@ -339,15 +338,40 @@ function randomSideAssignment(pairing: Pairing): SideAssignment {
   };
 }
 
+/** Whichever attribute shares the left side in the given round. */
+function attributeOnLeft(assignment: SideAssignment): Extract<CategorySlot, 'attributeA' | 'attributeB'> {
+  const found = assignment.leftCategories.find(
+    (slot): slot is Extract<CategorySlot, 'attributeA' | 'attributeB'> =>
+      slot === 'attributeA' || slot === 'attributeB',
+  );
+  if (!found) throw new Error('Round has no attribute category on its left side');
+  return found;
+}
+
 /** Makes every random decision for a session once, up front. */
 export function createSessionRandomisation(): SessionRandomisation {
   const firstPairing: Pairing = Math.random() < 0.5 ? 'A' : 'B';
   const secondPairing: Pairing = firstPairing === 'A' ? 'B' : 'A';
+
+  // One side decision for the whole session, not one per round. The targets keep
+  // their sides throughout and only the attributes swap between the two combined
+  // rounds, so exactly one thing changes at the switch.
+  //
+  // Re-rolling this per round moved both dimensions at once for half of
+  // participants: their second round carried the cost of relearning the target
+  // positions as well as the new pairing, and because the D-score compares a
+  // participant's own two rounds, that extra cost lands in the score as though
+  // it were a difference between the pairings.
+  const targetAOnLeft = Math.random() < 0.5;
+  const round1 = sideAssignmentFor(firstPairing, targetAOnLeft);
+
   return {
     firstPairing,
-    round1: randomSideAssignment(firstPairing),
-    round2: randomSideAssignment(secondPairing),
-    practiceTargetLeft: Math.random() < 0.5 ? 'targetA' : 'targetB',
-    practiceAttributeLeft: Math.random() < 0.5 ? 'attributeA' : 'attributeB',
+    round1,
+    round2: sideAssignmentFor(secondPairing, targetAOnLeft),
+    // Both practice blocks teach the positions round one then uses, rather than
+    // a mapping that changes the moment scoring starts.
+    practiceTargetLeft: targetAOnLeft ? 'targetA' : 'targetB',
+    practiceAttributeLeft: attributeOnLeft(round1),
   };
 }

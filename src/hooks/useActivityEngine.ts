@@ -230,6 +230,10 @@ export function useActivityEngine() {
   useEffect(() => {
     if (!currentTrial) return;
     const onKeyDown = (event: KeyboardEvent) => {
+      // A held-down key auto-repeats. Without this the repeats carry over the
+      // moment the next stimulus appears, answering it in a few milliseconds
+      // and filling the round with times too fast to mean anything.
+      if (event.repeat) return;
       const key = event.key.toLowerCase();
       if (key === 'e' || event.key === 'ArrowLeft') {
         event.preventDefault();
@@ -274,12 +278,13 @@ export function useActivityEngine() {
   const actions = useMemo(
     () => ({
       startActivity: (chosenActivityId: string = DEFAULT_ACTIVITY_ID) => {
-        setSessionClearedNotice(false);
         // Choosing a different topic mid-session would leave trials scored
-        // against the wrong word lists, so the run starts clean.
+        // against the wrong word lists, so the run starts clean. Everything
+        // else about the previous run has to go with them, block progress
+        // included, which is why this resets rather than clearing the trials.
+        resetActivityState({ newRandomisation: true });
+        setSessionClearedNotice(false);
         setActivityId(chosenActivityId);
-        setTrialRecords([]);
-        setRandomisation(createSessionRandomisation());
         setPhase('information');
       },
       acknowledge: (value: boolean) => setAcknowledged(value),
