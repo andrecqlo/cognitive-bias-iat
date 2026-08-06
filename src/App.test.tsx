@@ -229,6 +229,18 @@ describe('Hidden Associations activity', () => {
     expect(screen.queryByText(/\bbiased\b|\bprejudice/i)).not.toBeInTheDocument();
   });
 
+  it('offers the references as external links that cannot reach back into this page', () => {
+    const { container } = render(<App />);
+
+    CONTENT.landing.references.forEach((reference) => {
+      const link = container.querySelector(`a[href="${reference.url}"]`);
+      expect(link, `no link rendered for ${reference.title}`).not.toBeNull();
+      expect(link).toHaveAttribute('target', '_blank');
+      // Without noopener the opened page can reach window.opener.
+      expect(link?.getAttribute('rel')).toContain('noopener');
+    });
+  });
+
   it('clears the session from the landing page and confirms it', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /Clear my session/ }));

@@ -12,7 +12,7 @@ export const CONTENT = {
     heading: 'Hidden Associations',
     subtitle: 'Detecting subconscious associations based on the implicit association test.',
     intro:
-      'People connect some ideas more readily than others, often without meaning to, and these activities can surface a few of those hidden preferences. Hold the result loosely: it shifts with attention, tiredness and the order you happen to see things in, people who repeat one often get a different answer, and it says nothing about how you actually behave. Where it earns its keep is as a prompt to reflect on where your own thinking might lean—the reflection is the useful part, not the score.',
+      'This activity looks at how quickly you link certain ideas — associations we often hold without realising. Results shift with mood, fatigue and repetition, and a single score is a poor predictor of how you actually behave. Treat it as a prompt to reflect, not a verdict.',
     chooseHeading: 'Choose an activity',
     chooseHint: 'Each one uses the same method with a different set of words.',
     facts: ['Takes 5–7 minutes', 'Works on mobile and desktop', 'No sign-up', 'Your result stays on your device'],
@@ -22,6 +22,36 @@ export const CONTENT = {
     howItWorksToggle: 'How does this work?',
     howItWorks:
       'You sort words into categories as quickly as you can, and part-way through the pairings change. Most people are quicker when a pairing matches an association they already hold, and that gap in speed is what gets measured. At the end you choose whether to see a private comparison of your response times.',
+    referencesToggle: 'Where to read more',
+    referencesHint: 'These open in a new tab, on sites outside this one.',
+    /**
+     * Two public-facing links and the two papers that matter most: the one that
+     * introduced the method, and the meta-analysis behind the caution above
+     * about predicting behaviour. Titles, authors and years verified against
+     * Crossref; do not add a reference without checking it resolves.
+     */
+    references: [
+      {
+        title: 'Project Implicit',
+        detail: 'Take other versions of the test, run by the research group that developed it.',
+        url: 'https://implicit.harvard.edu/implicit/',
+      },
+      {
+        title: 'Project Implicit: frequently asked questions',
+        detail: 'Plain-language answers on what a result does and does not tell you.',
+        url: 'https://implicit.harvard.edu/implicit/faqs.html',
+      },
+      {
+        title: 'Greenwald, McGhee & Schwartz (1998)',
+        detail: 'The paper that introduced the method, in the Journal of Personality and Social Psychology.',
+        url: 'https://doi.org/10.1037/0022-3514.74.6.1464',
+      },
+      {
+        title: 'Oswald et al. (2013)',
+        detail: 'A meta-analysis finding that test scores predict discriminatory behaviour only weakly.',
+        url: 'https://doi.org/10.1037/a0032734',
+      },
+    ],
   },
   information: {
     heading: 'Before you begin',

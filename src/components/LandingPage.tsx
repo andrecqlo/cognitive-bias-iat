@@ -69,6 +69,31 @@ export function LandingPage({ onStart, onClearSession, sessionClearedNotice }: L
         </ul>
       </section>
 
+      <div className="mt-8">
+        <Disclosure summary={landing.referencesToggle}>
+          <p className="text-sm">{landing.referencesHint}</p>
+          <ul className="mt-3 space-y-3">
+            {landing.references.map((reference) => (
+              <li key={reference.url}>
+                <a
+                  href={reference.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-ink underline decoration-signal decoration-2 underline-offset-4 hover:text-signal"
+                >
+                  {reference.title}
+                  <span className="sr-only"> (opens in a new tab)</span>
+                  <span aria-hidden="true" className="ml-1 text-signal">
+                    ↗
+                  </span>
+                </a>
+                <p className="mt-0.5 text-sm leading-relaxed">{reference.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
+      </div>
+
       <footer className="mt-10 border-t border-line pt-5">
         <Button variant="quiet" onClick={onClearSession} className="px-0">
           Clear my session
