@@ -1,18 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearSession, loadSession, saveSession, type StoredSession } from './sessionStorage';
+import { STORAGE_KEY, clearSession, loadSession, saveSession, type StoredSession } from './sessionStorage';
 import { createSessionRandomisation } from './generateTrials';
-
-const STORAGE_KEY = 'hidden-associations-session-v1';
 
 function makeSession(): StoredSession {
   return {
     phase: 'result',
+    activityId: 'neurodiversity',
     randomisation: createSessionRandomisation(),
     trialRecords: [
       {
         id: 'trial-1',
         stimulus: 'Proficient',
-        category: 'competent',
+        category: 'attributeB',
         correctSide: 'left',
         block: 'A',
         reactionTimeMs: 640,

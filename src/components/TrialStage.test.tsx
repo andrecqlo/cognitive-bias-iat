@@ -7,14 +7,14 @@ import type { Trial } from '../types/activity';
 const TRIAL: Trial = {
   id: 'trial-1',
   stimulus: 'Typical learner',
-  category: 'neurotypical',
+  category: 'targetB',
   correctSide: 'right',
   block: 'A',
 };
 
 const ASSIGNMENT: DisplayAssignment = {
-  leftCategories: ['neurodivergent', 'incompetent'],
-  rightCategories: ['neurotypical', 'competent'],
+  leftCategories: ['targetA', 'attributeA'],
+  rightCategories: ['targetB', 'attributeB'],
   leftLabels: ['Neurodivergent', 'Incompetent'],
   rightLabels: ['Neurotypical', 'Competent'],
 };

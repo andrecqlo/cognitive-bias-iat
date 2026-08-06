@@ -1,4 +1,4 @@
-import type { CategoryKey } from '../config/stimuli';
+import type { CategorySlot } from '../config/activities';
 
 export type Side = 'left' | 'right';
 
@@ -17,13 +17,23 @@ export type TrialBlock =
 export interface Trial {
   id: string;
   stimulus: string;
-  category: CategoryKey;
+  category: CategorySlot;
   correctSide: Side;
   block: TrialBlock;
 }
 
 export interface TrialRecord extends Trial {
+  /**
+   * Time from the stimulus appearing to the *correct* response, including any
+   * time spent on a wrong answer first.
+   *
+   * The activity requires the correct side before advancing, which is the
+   * design the D-score's built-in error penalty assumes: an error costs the
+   * participant the time it takes to put it right, so no separate penalty is
+   * added and error trials stay in the calculation.
+   */
   reactionTimeMs: number;
+  /** Reported as accuracy; does not remove the trial from the D-score. */
   firstResponseCorrect: boolean;
   attempts: number;
   interrupted: boolean;
@@ -32,8 +42,8 @@ export interface TrialRecord extends Trial {
 /** Which two categories appear on each side for one round of the activity. */
 export interface SideAssignment {
   pairing: Pairing;
-  leftCategories: CategoryKey[];
-  rightCategories: CategoryKey[];
+  leftCategories: CategorySlot[];
+  rightCategories: CategorySlot[];
 }
 
 export type ActivityPhase =
@@ -53,6 +63,6 @@ export interface SessionRandomisation {
   firstPairing: Pairing;
   round1: SideAssignment;
   round2: SideAssignment;
-  practiceIdentityLeft: Extract<CategoryKey, 'neurodivergent' | 'neurotypical'>;
-  practiceCompetenceLeft: Extract<CategoryKey, 'competent' | 'incompetent'>;
+  practiceTargetLeft: Extract<CategorySlot, 'targetA' | 'targetB'>;
+  practiceAttributeLeft: Extract<CategorySlot, 'attributeA' | 'attributeB'>;
 }

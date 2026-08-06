@@ -1,50 +1,59 @@
 /**
  * All page copy lives here, separate from layout and logic, so wording can
  * be reviewed or changed without touching component code.
+ *
+ * The reading pages are deliberately short. Every sentence a participant has to
+ * read before starting is a sentence they may skim instead, and the ones that
+ * matter most are the limitations — those survive trimming ahead of anything
+ * else.
  */
 export const CONTENT = {
   landing: {
     heading: 'Hidden Associations',
-    subtitle: 'A short interactive activity exploring neurodiversity and assumptions about competence.',
+    subtitle: 'Short activities based on the Implicit Association Test.',
     intro:
-      'Your brain makes rapid associations every day. This activity explores how quickly different ideas feel connected. It is designed to encourage reflection—not to label or judge you.',
-    facts: ['Takes around 2–3 minutes', 'Works on mobile and desktop', 'No sign-up', 'Your result stays on your device'],
-    startButton: 'Start activity',
+      'Some pairs of ideas feel more connected than others, and that shows up in how quickly you can sort them. These activities measure that, and are designed to prompt reflection rather than to label or judge you.',
+    whatIsIatToggle: 'What is an Implicit Association Test?',
+    whatIsIat:
+      'An Implicit Association Test asks you to sort words into categories as fast as you can, then changes which categories share a button. Most people are quicker when the pairing matches an association they already hold, and that difference in speed is what gets measured. It says nothing about what you believe or how you behave—only about how quickly certain ideas came together on one occasion. Scores are not stable: people who repeat one often get a different answer.',
+    chooseHeading: 'Choose an activity',
+    chooseHint: 'Each one uses the same method with a different set of words.',
+    facts: ['Takes 5–7 minutes', 'Works on mobile and desktop', 'No sign-up', 'Your result stays on your device'],
+    startButton: 'Start',
     howItWorksToggle: 'How does this work?',
     howItWorks:
-      'You will quickly sort a series of words and phrases into categories. The category combinations will change during the activity. At the end, you can choose whether to view a private comparison of your response times.',
+      'You sort words into categories as quickly as you can. The category pairings change part-way through. At the end you choose whether to see a private comparison of your response times.',
   },
   information: {
     heading: 'Before you begin',
     points: [
-      'This is a brief educational demonstration.',
-      'It is not a validated psychological assessment.',
-      'It does not diagnose bias, prejudice, neurodivergence or personality.',
-      'The result is not a definitive measure of beliefs or behaviour.',
-      'Results can be affected by attention, reading speed, motor speed, familiarity with terminology, device type, test order and the specific phrases used.',
-      'No data is uploaded or sent to an employer, facilitator or website owner.',
-      'Some negative descriptors will appear during the activity.',
+      'This is a brief educational demonstration, not a validated psychological assessment.',
+      'It cannot diagnose bias, prejudice, neurodivergence or personality.',
+      'Results shift with attention, tiredness, reading speed, how familiar the words feel, your device, and the order you happen to see things in.',
+      'Negative words such as “Inept” appear during the activity.',
+      'Nothing is uploaded or shared with an employer, facilitator or site owner.',
     ],
     accessibilityNote:
-      'This activity relies on timed visual categorisation and may not be suitable or accessible for everyone.',
-    acknowledgement: 'I understand that this is a brief educational activity and not a validated psychological assessment.',
+      'The activity relies on timed visual sorting, which will not suit everyone.',
+    acknowledgement: 'I understand this is a brief educational activity, not a validated assessment.',
     continueButton: 'Continue',
   },
   instructions: {
     heading: 'How it works',
     points: [
-      'A word or phrase will appear in the centre of the screen.',
-      'Decide which category it belongs to.',
-      'Tap or click the left or right side to respond.',
-      'Respond quickly while trying to stay accurate.',
-      'The category pairings will change between rounds.',
-      'If you respond incorrectly, choose the correct side before continuing.',
+      'A word appears in the middle of the screen.',
+      'Tap or click the side whose category it belongs to.',
+      'Go quickly, but get it right — a wrong tap has to be corrected before you continue.',
+      'The category pairings change part-way through.',
     ],
     demoCaption: 'Try it now:',
     demoStimulus: 'Proficient',
     demoLeftCategory: 'Competent',
     demoRightCategory: 'Incompetent',
     demoHint: 'This belongs on the left.',
+    demoCorrect: 'That’s it. “Proficient” belongs with “Competent”, so you tap the left side.',
+    demoIncorrect: 'In the activity you would correct this before moving on. “Proficient” belongs with “Competent”, on the left.',
+    demoReset: 'Reset demonstration',
     startPracticeButton: 'Try a practice round',
   },
   practice: {
@@ -64,46 +73,76 @@ export const CONTENT = {
     startFinalButton: 'Start final round',
   },
   interruption: {
-    message: 'It looks like the activity was interrupted. You can continue, but some trials may not be included in your comparison.',
+    message: 'It looks like the activity was interrupted. You can continue, but some responses may not be counted.',
     dismiss: 'Continue',
   },
   resultChoice: {
     heading: 'Your result is ready',
-    body: 'Your result stays in this browser session. It is not stored, uploaded or visible to anyone else.',
+    body: 'It stays in this browser session. Nothing is stored, uploaded or visible to anyone else.',
     showButton: 'Show my result',
     skipButton: 'Skip my result',
   },
   result: {
     heading: 'Your result',
-    /** {percent} is replaced with the percentage difference between pairings. */
-    patterns: {
-      fasterWithIncompetent:
-        'During this activity, you categorised items {percent}% faster when “Neurodivergent” shared a response side with “Incompetent” than when it shared a side with “Competent.”',
-      fasterWithCompetent:
-        'During this activity, you categorised items {percent}% faster when “Neurodivergent” shared a response side with “Competent” than when it shared a side with “Incompetent.”',
-      similar: 'Your response times were broadly similar across the two category pairings.',
-      incomplete:
-        'There were not enough usable responses in this session to compare the two category pairings.',
+    /** The topic-specific sentences live on each activity; this one does not vary. */
+    incomplete: 'There were not enough usable responses to compare the two pairings.',
+    strengths: {
+      slight: 'slightly',
+      moderate: 'moderately',
+      strong: 'markedly',
     },
+    /**
+     * Shown on every result, whatever the outcome, and placed *above* the
+     * result sentence rather than below it. People read this page alone, with
+     * nobody to add context, so the caveat has to arrive before the sentence it
+     * qualifies — underneath, it reads as a footnote to a finding they have
+     * already accepted. Do not move it below, and do not hide it behind a
+     * toggle: the bands describe how large a gap is and can say nothing at all
+     * about how much to trust it.
+     */
+    chanceNoteHeading: 'Before you read this',
+    chanceNote:
+      'Some of what follows is chance. A short activity like this is not a stable measure of a person—repeat it another day and many people land somewhere different. Response times also move with attention, tiredness, reading speed, how familiar the words feel, your device, and which pairing you happened to see first.',
     disclaimer:
-      'This does not mean that you consciously hold a particular belief about neurodivergent people. It reflects your performance during one short activity and may be influenced by attention, familiarity, reading speed, motor speed, test order, your device and the particular phrases used.',
+      'This does not mean you consciously hold any particular belief about neurodivergent people. It describes your response times during one short activity, and nothing more.',
     whatDoesThisMeanToggle: 'What does this mean?',
     whatDoesThisMean:
-      'Automatic associations can be influenced by language, culture, media, workplace experiences and familiarity. A brief reaction-time activity cannot define your beliefs, behaviour or character. Treat this result as a prompt for curiosity rather than a judgement.',
+      'Quick associations are shaped by language, culture, media and everyday experience. They are not the same thing as your beliefs, your behaviour or your character, and a reaction-time activity cannot tell you which of those you have. The useful question is not “what does my score say about me?” but “where might associations like these come from, and where might they show up at work?”',
+    /** The specific causes are listed underneath, so this must not name one. */
     qualityWarning:
-      'Your responses varied more than usual during this activity, so this comparison is less reliable than usual. Treat it as a rough impression rather than a firm result.',
+      'Something about this session makes the comparison less dependable than usual. Treat it as a rough impression.',
+    /**
+     * The number itself sits behind this toggle rather than on the page. A
+     * bare "0.42" invites more precision than the activity can support, and a
+     * reader on their own has nobody to tell them otherwise.
+     */
+    scoreToggle: 'More detail: how the strength is worked out',
+    scoreExplanation:
+      'This activity is scored with a D-score, the standard measure for this kind of task. It compares your two rounds against how much your own response times varied, so a quick, consistent responder and a slower, more erratic one can be described on the same scale—the same gap in milliseconds can be a strong result for one person and a slight one for another.',
+    scoreBandsIntro: 'The wording above comes from where your score falls:',
+    scoreBands: [
+      'Under 0.15 — little or none',
+      '0.15 to 0.34 — slight',
+      '0.35 to 0.64 — moderate',
+      '0.65 and above — strong',
+    ],
+    scoreCaveat:
+      'These labels describe how large a gap is. They say nothing about whether it would appear again if you took the activity a second time.',
+    scoreYours: 'Your score',
+    comparisonHeading: 'Response time comparison',
+    detailHeading: 'Round detail',
+    differenceLabel: 'Difference between pairings',
     labels: {
-      medianA: 'Median response time — Neurodivergent + Incompetent pairing',
-      medianB: 'Median response time — Neurodivergent + Competent pairing',
-      accuracyA: 'Accuracy — Pairing A',
-      accuracyB: 'Accuracy — Pairing B',
-      usableA: 'Usable trials — Pairing A',
-      usableB: 'Usable trials — Pairing B',
+      meanRow: 'Average response time',
+      accuracyRow: 'Right first time',
+      usableRow: 'Responses counted',
+      meanPrefix: 'Average response time',
     },
+    continueButton: 'Continue',
   },
   completion: {
     heading: 'Activity complete',
-    body: 'Thank you for taking part. This activity is intended to prompt reflection about how quickly people can form associations—not to judge or label anyone.',
+    body: 'Thank you for taking part. This activity exists to prompt reflection about how quickly associations form—not to judge or label anyone.',
     startAgainButton: 'Start again',
     clearSessionButton: 'Clear my session',
     homeButton: 'Return to home',

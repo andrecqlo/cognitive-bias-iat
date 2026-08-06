@@ -1,5 +1,4 @@
 import { CONTENT } from '../config/content';
-import { CATEGORY_LABELS } from '../config/stimuli';
 import type { ActivityEngine } from '../hooks/useActivityEngine';
 import { TrialStage } from './TrialStage';
 import { Button } from './ui/Button';
@@ -25,8 +24,9 @@ function SidePreview({ labels, align }: { labels: string[]; align: 'left' | 'rig
 
 export function RoundTransition({ engine }: { engine: ActivityEngine }) {
   const { transition } = CONTENT;
-  const leftLabels = engine.randomisation.round2.leftCategories.map((category) => CATEGORY_LABELS[category]);
-  const rightLabels = engine.randomisation.round2.rightCategories.map((category) => CATEGORY_LABELS[category]);
+  const { labels } = engine.activity;
+  const leftLabels = engine.randomisation.round2.leftCategories.map((slot) => labels[slot]);
+  const rightLabels = engine.randomisation.round2.rightCategories.map((slot) => labels[slot]);
 
   if (engine.transitionStage === 'practice' && engine.currentTrial && engine.currentAssignment) {
     return (

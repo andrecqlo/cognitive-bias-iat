@@ -1,6 +1,9 @@
 import { ACTIVITY_CONFIG } from '../config/activityConfig';
-import { STIMULI, type CategoryKey } from '../config/stimuli';
+import type { CategorySlot } from '../config/activities';
 import type { Pairing, SessionRandomisation, SideAssignment, Side, Trial, TrialBlock } from '../types/activity';
+
+/** The four word lists for whichever activity is being generated. */
+export type StimulusSet = Record<CategorySlot, string[]>;
 
 let idCounter = 0;
 function nextId(): string {
@@ -25,18 +28,19 @@ const OTHER_SIDE: Record<Side, Side> = { left: 'right', right: 'left' };
  * so no category is over-represented.
  */
 function buildStimulusPool(
-  categories: CategoryKey[],
+  stimuli: StimulusSet,
+  categories: CategorySlot[],
   count: number,
-): { stimulus: string; category: CategoryKey }[] {
+): { stimulus: string; category: CategorySlot }[] {
   const perCategory = Math.floor(count / categories.length);
   const remainder = count - perCategory * categories.length;
   const categoriesGettingExtra = new Set(shuffle(categories).slice(0, remainder));
 
-  const pool: { stimulus: string; category: CategoryKey }[] = [];
+  const pool: { stimulus: string; category: CategorySlot }[] = [];
 
   categories.forEach((category) => {
     const need = perCategory + (categoriesGettingExtra.has(category) ? 1 : 0);
-    const available = STIMULI[category];
+    const available = stimuli[category];
     const picked: string[] = [];
     let cycle = shuffle(available);
 
@@ -56,7 +60,7 @@ function buildStimulusPool(
 
 interface SequenceItem {
   stimulus: string;
-  category: CategoryKey;
+  category: CategorySlot;
   correctSide: Side;
 }
 
@@ -220,7 +224,7 @@ function sequenceItems(pool: SequenceItem[]): SequenceItem[] {
   throw new Error('Unable to assign stimuli to the generated side pattern');
 }
 
-function categorySide(category: CategoryKey, assignment: SideAssignment): Side {
+function categorySide(category: CategorySlot, assignment: SideAssignment): Side {
   if (assignment.leftCategories.includes(category)) return 'left';
   if (assignment.rightCategories.includes(category)) return 'right';
   throw new Error(`Category "${category}" is not assigned to either side`);
@@ -231,14 +235,20 @@ function categorySide(category: CategoryKey, assignment: SideAssignment): Side {
  * categories on each side. Allocating in that order keeps left and right
  * responses balanced as well as the four categories.
  */
-function buildSequence(assignment: SideAssignment, count: number): SequenceItem[] {
+function buildSequence(stimuli: StimulusSet, assignment: SideAssignment, count: number): SequenceItem[] {
   const extraGoesLeft = Math.random() < 0.5;
   const leftCount = Math.floor(count / 2) + (count % 2 === 1 && extraGoesLeft ? 1 : 0);
   const rightCount = count - leftCount;
 
   const pool: SequenceItem[] = [
-    ...buildStimulusPool(assignment.leftCategories, leftCount).map((entry) => ({ ...entry, correctSide: 'left' as Side })),
-    ...buildStimulusPool(assignment.rightCategories, rightCount).map((entry) => ({ ...entry, correctSide: 'right' as Side })),
+    ...buildStimulusPool(stimuli, assignment.leftCategories, leftCount).map((entry) => ({
+      ...entry,
+      correctSide: 'left' as Side,
+    })),
+    ...buildStimulusPool(stimuli, assignment.rightCategories, rightCount).map((entry) => ({
+      ...entry,
+      correctSide: 'right' as Side,
+    })),
   ];
 
   pool.forEach((item) => {
@@ -261,60 +271,71 @@ function toTrials(items: SequenceItem[], block: TrialBlock): Trial[] {
   }));
 }
 
-export function generateIdentityPracticeTrials(
+export function generateTargetPracticeTrials(
+  stimuli: StimulusSet,
   count: number,
-  leftCategory: Extract<CategoryKey, 'neurodivergent' | 'neurotypical'>,
+  leftCategory: Extract<CategorySlot, 'targetA' | 'targetB'>,
 ): Trial[] {
-  const rightCategory: CategoryKey = leftCategory === 'neurodivergent' ? 'neurotypical' : 'neurodivergent';
+  const rightCategory: CategorySlot = leftCategory === 'targetA' ? 'targetB' : 'targetA';
   const assignment: SideAssignment = {
     pairing: 'A',
     leftCategories: [leftCategory],
     rightCategories: [rightCategory],
   };
-  return toTrials(buildSequence(assignment, count), 'practice-identity');
+  return toTrials(buildSequence(stimuli, assignment, count), 'practice-identity');
 }
 
-export function generateCompetencePracticeTrials(
+export function generateAttributePracticeTrials(
+  stimuli: StimulusSet,
   count: number,
-  leftCategory: Extract<CategoryKey, 'competent' | 'incompetent'>,
+  leftCategory: Extract<CategorySlot, 'attributeA' | 'attributeB'>,
 ): Trial[] {
-  const rightCategory: CategoryKey = leftCategory === 'competent' ? 'incompetent' : 'competent';
+  const rightCategory: CategorySlot = leftCategory === 'attributeA' ? 'attributeB' : 'attributeA';
   const assignment: SideAssignment = {
     pairing: 'A',
     leftCategories: [leftCategory],
     rightCategories: [rightCategory],
   };
-  return toTrials(buildSequence(assignment, count), 'practice-competence');
+  return toTrials(buildSequence(stimuli, assignment, count), 'practice-competence');
 }
 
-export function generateCombinedTrials(assignment: SideAssignment, count: number, block: TrialBlock): Trial[] {
-  return toTrials(buildSequence(assignment, count), block);
+export function generateCombinedTrials(
+  stimuli: StimulusSet,
+  assignment: SideAssignment,
+  count: number,
+  block: TrialBlock,
+): Trial[] {
+  return toTrials(buildSequence(stimuli, assignment, count), block);
 }
 
-/** Category groupings fixed by the activity design (see spec section 11). */
+/**
+ * How the four categories group in each pairing. Pairing A puts targetA with
+ * attributeA; Pairing B swaps the attributes over. Nothing here refers to any
+ * particular subject, which is what lets one engine run every activity.
+ */
 export function categoriesForPairing(pairing: Pairing): {
-  withNeurodivergent: CategoryKey[];
-  withNeurotypical: CategoryKey[];
+  withTargetA: CategorySlot[];
+  withTargetB: CategorySlot[];
 } {
   if (pairing === 'A') {
     return {
-      withNeurodivergent: ['neurodivergent', 'incompetent'],
-      withNeurotypical: ['neurotypical', 'competent'],
+      withTargetA: ['targetA', 'attributeA'],
+      withTargetB: ['targetB', 'attributeB'],
     };
   }
   return {
-    withNeurodivergent: ['neurodivergent', 'competent'],
-    withNeurotypical: ['neurotypical', 'incompetent'],
+    withTargetA: ['targetA', 'attributeB'],
+    withTargetB: ['targetB', 'attributeA'],
   };
 }
 
 function randomSideAssignment(pairing: Pairing): SideAssignment {
-  const { withNeurodivergent, withNeurotypical } = categoriesForPairing(pairing);
-  const neurodivergentOnLeft = Math.random() < 0.5;
+  const { withTargetA, withTargetB } = categoriesForPairing(pairing);
+  const targetAOnLeft = Math.random() < 0.5;
   return {
     pairing,
-    leftCategories: neurodivergentOnLeft ? withNeurodivergent : withNeurotypical,
-    rightCategories: neurodivergentOnLeft ? withNeurotypical : withNeurodivergent,
+    leftCategories: targetAOnLeft ? withTargetA : withTargetB,
+    rightCategories: targetAOnLeft ? withTargetB : withTargetA,
   };
 }
 
@@ -326,7 +347,7 @@ export function createSessionRandomisation(): SessionRandomisation {
     firstPairing,
     round1: randomSideAssignment(firstPairing),
     round2: randomSideAssignment(secondPairing),
-    practiceIdentityLeft: Math.random() < 0.5 ? 'neurodivergent' : 'neurotypical',
-    practiceCompetenceLeft: Math.random() < 0.5 ? 'competent' : 'incompetent',
+    practiceTargetLeft: Math.random() < 0.5 ? 'targetA' : 'targetB',
+    practiceAttributeLeft: Math.random() < 0.5 ? 'attributeA' : 'attributeB',
   };
 }

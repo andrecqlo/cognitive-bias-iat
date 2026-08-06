@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ACTIVITY_CONFIG } from '../config/activityConfig';
+import { STORAGE_KEY } from '../utils/sessionStorage';
 import { useActivityEngine, type ActivityEngine } from './useActivityEngine';
 
 type Engine = { current: ActivityEngine };
@@ -338,7 +339,7 @@ describe('useActivityEngine', () => {
       act(() => engine.current.actions.startActivity());
       act(() => engine.current.actions.acknowledge(true));
 
-      const raw = window.sessionStorage.getItem('hidden-associations-session-v1');
+      const raw = window.sessionStorage.getItem(STORAGE_KEY);
       expect(raw).not.toBeNull();
       expect(raw).not.toContain('name');
     });

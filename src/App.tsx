@@ -56,7 +56,7 @@ export default function App() {
       return <ResultChoice onShow={actions.showResult} onSkip={actions.skipResult} />;
 
     case 'result':
-      return <ResultPage result={engine.result} onContinue={actions.continueFromResult} />;
+      return <ResultPage activity={engine.activity} result={engine.result} onContinue={actions.continueFromResult} />;
 
     case 'completion':
       return (

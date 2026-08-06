@@ -1,21 +1,30 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { ACTIVITY_CONFIG } from './config/activityConfig';
 import { CONTENT } from './config/content';
-import { CATEGORY_LABELS, STIMULI, type CategoryKey } from './config/stimuli';
+import { ACTIVITIES, type CategorySlot } from './config/activities';
 import type { Side } from './types/activity';
+
+/** The activity a participant reaches by clicking the first card. */
+const ACTIVITY = ACTIVITIES[0];
 
 /** Works out the correct side from what is on screen: the stimulus phrase and
  * the categories named in each response zone's label. */
 function correctSideOnScreen(): Side {
   const stimulus = screen.getByTestId('stimulus').textContent ?? '';
-  const category = (Object.keys(STIMULI) as CategoryKey[]).find((key) =>
-    STIMULI[key].includes(stimulus),
+  const slot = (Object.keys(ACTIVITY.stimuli) as CategorySlot[]).find((key) =>
+    ACTIVITY.stimuli[key].includes(stimulus),
   );
-  if (!category) throw new Error(`Unrecognised stimulus: ${stimulus}`);
+  if (!slot) throw new Error(`Unrecognised stimulus: ${stimulus}`);
 
   const leftLabel = screen.getByRole('button', { name: /Respond left/ }).getAttribute('aria-label') ?? '';
-  return leftLabel.includes(CATEGORY_LABELS[category]) ? 'left' : 'right';
+  return leftLabel.includes(ACTIVITY.labels[slot]) ? 'left' : 'right';
+}
+
+/** The picker gives each card its own start button, labelled by activity. */
+function startActivity() {
+  fireEvent.click(screen.getByRole('button', { name: `${CONTENT.landing.startButton}: ${ACTIVITY.title}` }));
 }
 
 function respond(side: Side, via: 'click' | 'keyboard') {
@@ -43,7 +52,7 @@ function answerCurrentTrial(via: 'click' | 'keyboard') {
 }
 
 function reachPracticeRound() {
-  fireEvent.click(screen.getByRole('button', { name: CONTENT.landing.startButton }));
+  startActivity();
   fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: CONTENT.information.continueButton }));
   fireEvent.click(screen.getByRole('button', { name: CONTENT.instructions.startPracticeButton }));
@@ -70,7 +79,7 @@ describe('Hidden Associations activity', () => {
 
   it('blocks the activity until the acknowledgement is given', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.landing.startButton }));
+    startActivity();
 
     const continueButton = screen.getByRole('button', { name: CONTENT.information.continueButton });
     expect(continueButton).toBeDisabled();
@@ -84,14 +93,14 @@ describe('Hidden Associations activity', () => {
 
   it('states that the activity may not suit everyone', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.landing.startButton }));
+    startActivity();
 
     expect(screen.getByText(CONTENT.information.accessibilityNote)).toBeInTheDocument();
   });
 
   it('lets the instructions demonstration be tried before the practice round', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.landing.startButton }));
+    startActivity();
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: CONTENT.information.continueButton }));
 
@@ -170,11 +179,11 @@ describe('Hidden Associations activity', () => {
     // Practice, round one, transition practice and round two.
     for (let i = 0; i < 16; i += 1) answerCurrentTrial('click');
     fireEvent.click(screen.getByRole('button', { name: CONTENT.practice.beginButton }));
-    for (let i = 0; i < 26; i += 1) answerCurrentTrial('click');
+    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
     fireEvent.click(screen.getByRole('button', { name: /Practise the new pairing/ }));
-    for (let i = 0; i < 5; i += 1) answerCurrentTrial('click');
+    for (let i = 0; i < ACTIVITY_CONFIG.transitionPracticeTrials; i += 1) answerCurrentTrial('click');
     fireEvent.click(screen.getByRole('button', { name: CONTENT.transition.startFinalButton }));
-    for (let i = 0; i < 26; i += 1) answerCurrentTrial('click');
+    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
 
     expect(screen.getByRole('heading', { level: 1, name: CONTENT.resultChoice.heading })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: CONTENT.resultChoice.showButton })).toBeInTheDocument();
@@ -187,11 +196,11 @@ describe('Hidden Associations activity', () => {
 
     for (let i = 0; i < 16; i += 1) answerCurrentTrial('click');
     fireEvent.click(screen.getByRole('button', { name: CONTENT.practice.beginButton }));
-    for (let i = 0; i < 26; i += 1) answerCurrentTrial('click');
+    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
     fireEvent.click(screen.getByRole('button', { name: /Practise the new pairing/ }));
-    for (let i = 0; i < 5; i += 1) answerCurrentTrial('click');
+    for (let i = 0; i < ACTIVITY_CONFIG.transitionPracticeTrials; i += 1) answerCurrentTrial('click');
     fireEvent.click(screen.getByRole('button', { name: CONTENT.transition.startFinalButton }));
-    for (let i = 0; i < 26; i += 1) answerCurrentTrial('click');
+    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
 
     fireEvent.click(screen.getByRole('button', { name: CONTENT.resultChoice.skipButton }));
 
@@ -205,11 +214,11 @@ describe('Hidden Associations activity', () => {
 
     for (let i = 0; i < 16; i += 1) answerCurrentTrial('click');
     fireEvent.click(screen.getByRole('button', { name: CONTENT.practice.beginButton }));
-    for (let i = 0; i < 26; i += 1) answerCurrentTrial('click');
+    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
     fireEvent.click(screen.getByRole('button', { name: /Practise the new pairing/ }));
-    for (let i = 0; i < 5; i += 1) answerCurrentTrial('click');
+    for (let i = 0; i < ACTIVITY_CONFIG.transitionPracticeTrials; i += 1) answerCurrentTrial('click');
     fireEvent.click(screen.getByRole('button', { name: CONTENT.transition.startFinalButton }));
-    for (let i = 0; i < 26; i += 1) answerCurrentTrial('click');
+    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
 
     fireEvent.click(screen.getByRole('button', { name: CONTENT.resultChoice.showButton }));
 

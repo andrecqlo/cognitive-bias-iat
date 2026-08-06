@@ -1,3 +1,4 @@
+import type { ActivityDefinition } from '../config/activities';
 import { CONTENT } from '../config/content';
 import type { ActivityResult, RoundSummary } from '../utils/calculateResult';
 import { Button } from './ui/Button';
@@ -5,17 +6,20 @@ import { Disclosure } from './ui/Disclosure';
 import { Card, PageShell } from './ui/PageShell';
 
 interface ResultPageProps {
+  activity: ActivityDefinition;
   result: ActivityResult;
   onContinue: () => void;
 }
 
-function patternSentence(result: ActivityResult): string {
-  const { patterns } = CONTENT.result;
-  if (result.percentageDifference === null) return patterns.incomplete;
-  const percent = String(result.percentageDifference);
-  if (result.direction === 'similar') return patterns.similar;
-  if (result.direction === 'fasterWithIncompetent') return patterns.fasterWithIncompetent.replace('{percent}', percent);
-  return patterns.fasterWithCompetent.replace('{percent}', percent);
+function patternSentence(activity: ActivityDefinition, result: ActivityResult): string {
+  const { strengths, incomplete } = CONTENT.result;
+  if (result.dScore === null) return incomplete;
+  if (result.direction === 'similar' || result.strength === null) return activity.result.similar;
+  const template =
+    result.direction === 'fasterWithAttributeA'
+      ? activity.result.fasterWithAttributeA
+      : activity.result.fasterWithAttributeB;
+  return template.replace('{strength}', strengths[result.strength]);
 }
 
 function formatMs(value: number | null): string {
@@ -45,22 +49,24 @@ function ComparisonBar({ label, value, maxValue }: { label: string; value: numbe
 }
 
 function RoundDetail({ summary, title }: { summary: RoundSummary; title: string }) {
+  const { labels } = CONTENT.result;
+
   return (
     <div className="rounded-[8px] border border-line bg-surface px-4 py-3">
       <p className="text-sm font-semibold text-ink">{title}</p>
       <dl className="mt-2 space-y-1 text-sm text-muted">
         <div className="flex justify-between gap-3">
-          <dt>Median response time</dt>
-          <dd className="font-medium text-ink">{formatMs(summary.medianReactionTimeMs)}</dd>
+          <dt>{labels.meanRow}</dt>
+          <dd className="font-medium text-ink">{formatMs(summary.meanReactionTimeMs)}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt>First-response accuracy</dt>
+          <dt>{labels.accuracyRow}</dt>
           <dd className="font-medium text-ink">{formatAccuracy(summary.accuracy)}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt>Usable trials</dt>
+          <dt>{labels.usableRow}</dt>
           <dd className="font-medium text-ink">
-            {summary.usableTrials} of {summary.totalTrials}
+            {summary.usableTrials} of {summary.scoredTrials}
           </dd>
         </div>
       </dl>
@@ -68,16 +74,24 @@ function RoundDetail({ summary, title }: { summary: RoundSummary; title: string 
   );
 }
 
-export function ResultPage({ result, onContinue }: ResultPageProps) {
+export function ResultPage({ activity, result, onContinue }: ResultPageProps) {
   const { result: copy } = CONTENT;
-  const maxMedian = Math.max(result.pairingA.medianReactionTimeMs ?? 0, result.pairingB.medianReactionTimeMs ?? 0);
+  const maxMean = Math.max(result.pairingA.meanReactionTimeMs ?? 0, result.pairingB.meanReactionTimeMs ?? 0);
 
   return (
     <PageShell wide>
       <h1 className="text-[clamp(1.75rem,7vw,2.5rem)] leading-tight font-semibold text-ink">{copy.heading}</h1>
 
-      <Card className="mt-6">
-        <p className="text-lg leading-relaxed text-ink">{patternSentence(result)}</p>
+      {/* Above the result, not below it. People read this page on their own,
+          so the caveat has to land before the sentence it qualifies rather
+          than as a footnote to something already accepted. */}
+      <div className="mt-6 rounded-[8px] border border-line bg-zone px-4 py-4">
+        <p className="text-sm font-semibold text-ink">{copy.chanceNoteHeading}</p>
+        <p className="mt-2 leading-relaxed text-ink-soft">{copy.chanceNote}</p>
+      </div>
+
+      <Card className="mt-4">
+        <p className="text-lg leading-relaxed text-ink">{patternSentence(activity, result)}</p>
         <p className="mt-4 border-t border-line pt-4 text-sm leading-relaxed text-muted">{copy.disclaimer}</p>
       </Card>
 
@@ -100,37 +114,62 @@ export function ResultPage({ result, onContinue }: ResultPageProps) {
 
       <section className="mt-6" aria-labelledby="comparison-heading">
         <h2 id="comparison-heading" className="text-lg font-semibold text-ink">
-          Response time comparison
+          {copy.comparisonHeading}
         </h2>
         <div className="mt-4 space-y-5">
-          <ComparisonBar label={copy.labels.medianA} value={result.pairingA.medianReactionTimeMs} maxValue={maxMedian} />
-          <ComparisonBar label={copy.labels.medianB} value={result.pairingB.medianReactionTimeMs} maxValue={maxMedian} />
+          <ComparisonBar
+            label={`${copy.labels.meanPrefix} — ${activity.pairingLabels.a} pairing`}
+            value={result.pairingA.meanReactionTimeMs}
+            maxValue={maxMean}
+          />
+          <ComparisonBar
+            label={`${copy.labels.meanPrefix} — ${activity.pairingLabels.b} pairing`}
+            value={result.pairingB.meanReactionTimeMs}
+            maxValue={maxMean}
+          />
         </div>
-        {result.percentageDifference !== null && (
+        {result.differenceMs !== null && (
           <p className="mt-4 text-sm text-muted">
-            Difference between pairings: <span className="font-semibold text-ink">{result.percentageDifference}%</span>
+            {copy.differenceLabel}: <span className="font-semibold text-ink">{result.differenceMs} ms</span>
           </p>
         )}
       </section>
 
       <section className="mt-7" aria-labelledby="detail-heading">
         <h2 id="detail-heading" className="text-lg font-semibold text-ink">
-          Round detail
+          {copy.detailHeading}
         </h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <RoundDetail summary={result.pairingA} title="Neurodivergent + Incompetent pairing" />
-          <RoundDetail summary={result.pairingB} title="Neurodivergent + Competent pairing" />
+          <RoundDetail summary={result.pairingA} title={activity.pairingLabels.a} />
+          <RoundDetail summary={result.pairingB} title={activity.pairingLabels.b} />
         </div>
       </section>
 
-      <div className="mt-7">
+      <div className="mt-7 space-y-3">
         <Disclosure summary={copy.whatDoesThisMeanToggle}>
           <p className="leading-relaxed">{copy.whatDoesThisMean}</p>
+        </Disclosure>
+        {/* The number lives here rather than on the page: a bare figure invites
+            more precision than the activity can support. */}
+        <Disclosure summary={copy.scoreToggle}>
+          <p className="leading-relaxed">{copy.scoreExplanation}</p>
+          <p className="mt-3 leading-relaxed">{copy.scoreBandsIntro}</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {copy.scoreBands.map((band) => (
+              <li key={band}>{band}</li>
+            ))}
+          </ul>
+          {result.dScore !== null && (
+            <p className="mt-3">
+              {copy.scoreYours}: <span className="font-semibold text-ink">{result.dScore.toFixed(2)}</span>
+            </p>
+          )}
+          <p className="mt-3 leading-relaxed">{copy.scoreCaveat}</p>
         </Disclosure>
       </div>
 
       <Button className="mt-8 w-full sm:w-auto sm:self-start" onClick={onContinue}>
-        Continue
+        {copy.continueButton}
       </Button>
     </PageShell>
   );

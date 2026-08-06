@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ACTIVITY_CONFIG } from '../config/activityConfig';
-import { CATEGORY_LABELS, type CategoryKey } from '../config/stimuli';
+import { DEFAULT_ACTIVITY_ID, findActivity, type ActivityDefinition, type CategorySlot } from '../config/activities';
 import type {
   ActivityPhase,
   SessionRandomisation,
@@ -12,9 +12,9 @@ import type {
 } from '../types/activity';
 import {
   createSessionRandomisation,
+  generateAttributePracticeTrials,
   generateCombinedTrials,
-  generateCompetencePracticeTrials,
-  generateIdentityPracticeTrials,
+  generateTargetPracticeTrials,
 } from '../utils/generateTrials';
 import { calculateResult, type ActivityResult } from '../utils/calculateResult';
 import { clearSession, loadSession, saveSession, type StoredSession } from '../utils/sessionStorage';
@@ -26,8 +26,8 @@ export type TrialFeedback = 'idle' | 'correct' | 'incorrect';
 export type TransitionStage = 'notice' | 'practice' | 'ready';
 
 export interface DisplayAssignment {
-  leftCategories: CategoryKey[];
-  rightCategories: CategoryKey[];
+  leftCategories: CategorySlot[];
+  rightCategories: CategorySlot[];
   leftLabels: string[];
   rightLabels: string[];
 }
@@ -49,38 +49,46 @@ function resumeRecords(stored: StoredSession | null): TrialRecord[] {
   return phase === 'resultChoice' || phase === 'result' ? stored.trialRecords : [];
 }
 
-function labelsFor(categories: CategoryKey[]): string[] {
-  return categories.map((category) => CATEGORY_LABELS[category]);
-}
-
-function toDisplayAssignment(leftCategories: CategoryKey[], rightCategories: CategoryKey[]): DisplayAssignment {
+function toDisplayAssignment(
+  activity: ActivityDefinition,
+  leftCategories: CategorySlot[],
+  rightCategories: CategorySlot[],
+): DisplayAssignment {
   return {
     leftCategories,
     rightCategories,
-    leftLabels: labelsFor(leftCategories),
-    rightLabels: labelsFor(rightCategories),
+    leftLabels: leftCategories.map((slot) => activity.labels[slot]),
+    rightLabels: rightCategories.map((slot) => activity.labels[slot]),
   };
 }
 
 /** The categories on screen depend on which block the current trial belongs to. */
-function assignmentForBlock(block: TrialBlock, randomisation: SessionRandomisation): DisplayAssignment {
+function assignmentForBlock(
+  activity: ActivityDefinition,
+  block: TrialBlock,
+  randomisation: SessionRandomisation,
+): DisplayAssignment {
   switch (block) {
     case 'practice-identity': {
-      const left = randomisation.practiceIdentityLeft;
-      const right: CategoryKey = left === 'neurodivergent' ? 'neurotypical' : 'neurodivergent';
-      return toDisplayAssignment([left], [right]);
+      const left = randomisation.practiceTargetLeft;
+      const right: CategorySlot = left === 'targetA' ? 'targetB' : 'targetA';
+      return toDisplayAssignment(activity, [left], [right]);
     }
     case 'practice-competence': {
-      const left = randomisation.practiceCompetenceLeft;
-      const right: CategoryKey = left === 'competent' ? 'incompetent' : 'competent';
-      return toDisplayAssignment([left], [right]);
+      const left = randomisation.practiceAttributeLeft;
+      const right: CategorySlot = left === 'attributeA' ? 'attributeB' : 'attributeA';
+      return toDisplayAssignment(activity, [left], [right]);
     }
     case 'practice-transition':
-      return toDisplayAssignment([...randomisation.round2.leftCategories], [...randomisation.round2.rightCategories]);
+      return toDisplayAssignment(
+        activity,
+        [...randomisation.round2.leftCategories],
+        [...randomisation.round2.rightCategories],
+      );
     default: {
       const assignment: SideAssignment =
         block === randomisation.round1.pairing ? randomisation.round1 : randomisation.round2;
-      return toDisplayAssignment([...assignment.leftCategories], [...assignment.rightCategories]);
+      return toDisplayAssignment(activity, [...assignment.leftCategories], [...assignment.rightCategories]);
     }
   }
 }
@@ -95,6 +103,7 @@ export function useActivityEngine() {
   const storedSession = useMemo(() => loadSession(), []);
 
   const [phase, setPhase] = useState<ActivityPhase>(() => resumePhase(storedSession));
+  const [activityId, setActivityId] = useState<string>(() => storedSession?.activityId ?? DEFAULT_ACTIVITY_ID);
   const [acknowledged, setAcknowledged] = useState<boolean>(() => storedSession?.acknowledged ?? false);
   const [randomisation, setRandomisation] = useState<SessionRandomisation>(
     () => storedSession?.randomisation ?? createSessionRandomisation(),
@@ -108,12 +117,13 @@ export function useActivityEngine() {
   const [transitionStage, setTransitionStage] = useState<TransitionStage>('notice');
   const [sessionClearedNotice, setSessionClearedNotice] = useState(false);
 
-  const firstLatencyRef = useRef<number | null>(null);
   const attemptsRef = useRef(0);
   const advanceTimeoutRef = useRef<number | null>(null);
   /** Guards against a trial being recorded twice by a duplicated input event
    * (pointer plus click, or a held-down key). */
   const resolvedRef = useRef(false);
+
+  const activity = useMemo(() => findActivity(activityId), [activityId]);
 
   const prefersReducedMotion = usePrefersReducedMotion();
   const timer = useReactionTimer();
@@ -126,8 +136,8 @@ export function useActivityEngine() {
   );
 
   const currentAssignment = useMemo(
-    () => (currentTrial ? assignmentForBlock(currentTrial.block, randomisation) : null),
-    [currentTrial, randomisation],
+    () => (currentTrial ? assignmentForBlock(activity, currentTrial.block, randomisation) : null),
+    [activity, currentTrial, randomisation],
   );
 
   const clearPendingAdvance = useCallback(() => {
@@ -155,7 +165,6 @@ export function useActivityEngine() {
   // Reset the timer and interruption flag whenever a new stimulus appears.
   useEffect(() => {
     if (!currentTrial) return;
-    firstLatencyRef.current = null;
     attemptsRef.current = 0;
     resolvedRef.current = false;
     beginTrial();
@@ -186,7 +195,6 @@ export function useActivityEngine() {
 
       const latency = timer.elapsed();
       attemptsRef.current += 1;
-      if (firstLatencyRef.current === null) firstLatencyRef.current = latency;
 
       if (side !== trial.correctSide) {
         setFeedback('incorrect');
@@ -198,7 +206,8 @@ export function useActivityEngine() {
       setFeedback('correct');
       const record: TrialRecord = {
         ...trial,
-        reactionTimeMs: firstLatencyRef.current,
+        // Time to the correct response, so a wrong turn costs what it cost.
+        reactionTimeMs: latency,
         firstResponseCorrect: attemptsRef.current === 1,
         attempts: attemptsRef.current,
         interrupted: wasInterrupted(),
@@ -243,8 +252,8 @@ export function useActivityEngine() {
       clearSession();
       return;
     }
-    saveSession({ phase, randomisation, trialRecords, acknowledged });
-  }, [acknowledged, phase, randomisation, trialRecords]);
+    saveSession({ phase, activityId, randomisation, trialRecords, acknowledged });
+  }, [acknowledged, activityId, phase, randomisation, trialRecords]);
 
   const resetActivityState = useCallback(
     (options: { newRandomisation: boolean }) => {
@@ -264,8 +273,13 @@ export function useActivityEngine() {
 
   const actions = useMemo(
     () => ({
-      startActivity: () => {
+      startActivity: (chosenActivityId: string = DEFAULT_ACTIVITY_ID) => {
         setSessionClearedNotice(false);
+        // Choosing a different topic mid-session would leave trials scored
+        // against the wrong word lists, so the run starts clean.
+        setActivityId(chosenActivityId);
+        setTrialRecords([]);
+        setRandomisation(createSessionRandomisation());
         setPhase('information');
       },
       acknowledge: (value: boolean) => setAcknowledged(value),
@@ -273,29 +287,49 @@ export function useActivityEngine() {
       startPractice: () => {
         setPracticeComplete(false);
         loadQueue([
-          ...generateIdentityPracticeTrials(ACTIVITY_CONFIG.practice.identityTrials, randomisation.practiceIdentityLeft),
-          ...generateCompetencePracticeTrials(
+          ...generateTargetPracticeTrials(
+            activity.stimuli,
+            ACTIVITY_CONFIG.practice.identityTrials,
+            randomisation.practiceTargetLeft,
+          ),
+          ...generateAttributePracticeTrials(
+            activity.stimuli,
             ACTIVITY_CONFIG.practice.competenceTrials,
-            randomisation.practiceCompetenceLeft,
+            randomisation.practiceAttributeLeft,
           ),
         ]);
         setPhase('practice');
       },
       beginRounds: () => {
         loadQueue(
-          generateCombinedTrials(randomisation.round1, ACTIVITY_CONFIG.scoredRoundTrials, randomisation.round1.pairing),
+          generateCombinedTrials(
+            activity.stimuli,
+            randomisation.round1,
+            ACTIVITY_CONFIG.scoredRoundTrials,
+            randomisation.round1.pairing,
+          ),
         );
         setPhase('round1');
       },
       startTransitionPractice: () => {
         loadQueue(
-          generateCombinedTrials(randomisation.round2, ACTIVITY_CONFIG.transitionPracticeTrials, 'practice-transition'),
+          generateCombinedTrials(
+            activity.stimuli,
+            randomisation.round2,
+            ACTIVITY_CONFIG.transitionPracticeTrials,
+            'practice-transition',
+          ),
         );
         setTransitionStage('practice');
       },
       startFinalRound: () => {
         loadQueue(
-          generateCombinedTrials(randomisation.round2, ACTIVITY_CONFIG.scoredRoundTrials, randomisation.round2.pairing),
+          generateCombinedTrials(
+            activity.stimuli,
+            randomisation.round2,
+            ACTIVITY_CONFIG.scoredRoundTrials,
+            randomisation.round2.pairing,
+          ),
         );
         setPhase('round2');
       },
@@ -320,7 +354,7 @@ export function useActivityEngine() {
       },
       dismissSessionClearedNotice: () => setSessionClearedNotice(false),
     }),
-    [loadQueue, randomisation, resetActivityState],
+    [activity, loadQueue, randomisation, resetActivityState],
   );
 
   const roundLabel = useMemo(() => {
@@ -333,6 +367,7 @@ export function useActivityEngine() {
 
   return {
     phase,
+    activity,
     acknowledged,
     randomisation,
     trialRecords,
