@@ -7,6 +7,13 @@
  * matter most are the limitations — those survive trimming ahead of anything
  * else.
  */
+/**
+ * Listed with the other information-page points and named separately below, so
+ * the required accessibility statement stays findable without the sentence
+ * being written out twice.
+ */
+const ACCESSIBILITY_NOTE = 'It relies on timed visual sorting, which will not suit everyone.';
+
 export const CONTENT = {
   landing: {
     heading: 'Hidden Associations',
@@ -55,17 +62,29 @@ export const CONTENT = {
   },
   information: {
     heading: 'Before you begin',
+    /**
+     * The consent gate, so it carries only what consent needs: what the
+     * activity is not, the two things that might make someone decide not to
+     * start, and where their responses go.
+     *
+     * Deliberately not here any more. "Not a validated psychological
+     * assessment" was saying what the acknowledgement below says word for word.
+     * The list of things that move a result — attention, tiredness, reading
+     * speed, device, test order — is on the landing page before this screen and
+     * in full on the result page, where someone is actually interpreting a
+     * number. It was being read three times; twice is enough.
+     */
     points: [
-      'This is a brief educational demonstration, not a validated psychological assessment.',
-      'It cannot diagnose bias, prejudice, neurodivergence or personality.',
-      'Results shift with attention, tiredness, reading speed, how familiar the words feel, your device, and the order you happen to see things in.',
+      'This is a short demonstration — it cannot diagnose bias, prejudice, neurodivergence or personality.',
       'Negative words such as “Inept” appear during the activity.',
+      ACCESSIBILITY_NOTE,
       'Nothing is uploaded or shared with an employer, facilitator or site owner.',
     ],
-    accessibilityNote:
-      'The activity relies on timed visual sorting, which will not suit everyone.',
+    accessibilityNote: ACCESSIBILITY_NOTE,
     acknowledgement: 'I understand this is a brief educational activity, not a validated assessment.',
     continueButton: 'Continue',
+    checkboxHint: 'Select the box above to continue.',
+    backButton: 'Back',
   },
   instructions: {
     heading: 'How it works',

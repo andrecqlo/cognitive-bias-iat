@@ -25,10 +25,6 @@ export function InformationPage({ acknowledged, onAcknowledge, onContinue, onBac
         ))}
       </ul>
 
-      <p className="mt-6 rounded-[8px] border border-line bg-surface px-4 py-3 text-sm leading-relaxed text-muted">
-        {information.accessibilityNote}
-      </p>
-
       <Card className="mt-8">
         <label className="flex cursor-pointer items-start gap-3">
           <input
@@ -43,15 +39,11 @@ export function InformationPage({ acknowledged, onAcknowledge, onContinue, onBac
         <Button className="mt-6 w-full" onClick={onContinue} disabled={!acknowledged}>
           {information.continueButton}
         </Button>
-        {!acknowledged && (
-          <p className="mt-3 text-center text-sm text-muted">
-            Select the box above to continue.
-          </p>
-        )}
+        {!acknowledged && <p className="mt-3 text-center text-sm text-muted">{information.checkboxHint}</p>}
       </Card>
 
       <Button variant="quiet" className="mt-6 self-start px-0" onClick={onBack}>
-        Back
+        {information.backButton}
       </Button>
     </PageShell>
   );
