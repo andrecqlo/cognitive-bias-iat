@@ -54,12 +54,6 @@ export type AttributeSlot = Extract<CategorySlot, 'attributeA' | 'attributeB'>;
 export const TARGET_SLOTS = ['targetA', 'targetB'] as const;
 export const ATTRIBUTE_SLOTS = ['attributeA', 'attributeB'] as const;
 
-/** One term explained on the definitions screen before any trial runs. */
-export interface CategoryDefinition {
-  term: string;
-  definition: string;
-}
-
 export interface ActivityDefinition {
   id: string;
   title: string;
@@ -68,10 +62,16 @@ export interface ActivityDefinition {
   labels: Record<CategorySlot, string>;
   stimuli: Record<CategorySlot, string[]>;
   /**
-   * Shown before the activity starts. Between them these must cover **every**
-   * word in `stimuli`, so nothing is read for the first time mid-block.
+   * What each category means, shown before the activity starts in a table
+   * beside the words that category will use.
+   *
+   * Keyed by slot rather than written as prose so the words column is generated
+   * from `stimuli` itself. Coverage is then structural: a word cannot be missing
+   * from the definitions screen, because the screen reads the same list the
+   * trials do. Keep each one to a sentence — the examples are in the next
+   * column, so the definition does not need to list them.
    */
-  definitions: CategoryDefinition[];
+  definitions: Record<CategorySlot, string>;
   /**
    * The attribute that stays focal in every block. **This must be the
    * positively-valenced one.**
@@ -157,23 +157,12 @@ const NEURODIVERSITY: ActivityDefinition = {
     attributeA: ['capable', 'skilled', 'effective'],
     attributeB: ['incapable', 'unskilled', 'ineffective'],
   },
-  definitions: [
-    {
-      term: 'Neurodivergent',
-      definition:
-        'People whose brains work differently from the majority. In this activity that means people with ADHD, autistic people and dyslexic people.',
-    },
-    {
-      term: 'Neuromajority',
-      definition:
-        'People whose ways of thinking and learning are shared by most of the population — also called neurotypical, a conventional learner or a typical mind.',
-    },
-    {
-      term: 'Competent and Incompetent',
-      definition:
-        'The words you will sort are everyday synonyms: capable, skilled and effective on one side; incapable, unskilled and ineffective on the other.',
-    },
-  ],
+  definitions: {
+    targetA: 'People whose brains work differently from the majority.',
+    targetB: 'People whose ways of thinking and learning are shared by most of the population.',
+    attributeA: 'Able and effective at what they do.',
+    attributeB: 'Not able or effective at what they do.',
+  },
   /** "Competent" — the positive attribute, as good-focal requires. */
   focalAttribute: 'attributeA',
   blockLabels: {

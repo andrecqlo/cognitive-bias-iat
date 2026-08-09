@@ -44,15 +44,21 @@ export function shuffle<T>(items: T[]): T[] {
 /**
  * The order in which the two dimensions appear within a block.
  *
- * Straight from the recommended composition: a run of attribute-only trials
- * opens the block, then category and attribute trials alternate. The opening
- * run is what scoring later discards, so the trials a participant meets while
- * still settling into a new focal pair are attribute trials in both blocks of a
- * pair — the same warm-up cost on both sides of the comparison.
+ * For a scored block this is the recommended composition: a run of
+ * attribute-only trials opens the block, then category and attribute trials
+ * alternate. The opening run is what scoring later discards, so the trials a
+ * participant meets while still settling into a new focal pair are attribute
+ * trials in both blocks of a pair — the same warm-up cost on both sides of the
+ * comparison.
+ *
+ * The warm-up passes `leadingAttributeTrials` of zero, because it is never
+ * scored and so has nothing to discard. Straight alternation splits its trials
+ * evenly between the two dimensions, which is what lets a warm-up as long as
+ * the word lists show every word exactly once. Keep the leading run and the
+ * same length would show two thirds attributes and miss a target word from each
+ * category.
  */
-export function buildDimensionSchedule(trials: number): Dimension[] {
-  const { leadingAttributeTrials } = ACTIVITY_CONFIG.blocks;
-
+export function buildDimensionSchedule(trials: number, leadingAttributeTrials: number): Dimension[] {
   return Array.from({ length: trials }, (_unused, index) => {
     if (index < leadingAttributeTrials) return 'attribute';
     return (index - leadingAttributeTrials) % 2 === 0 ? 'target' : 'attribute';
@@ -199,7 +205,8 @@ export function generateBlockTrials(
   const focalAttribute = activity.focalAttribute;
   const otherAttribute = nonFocalAttribute(activity);
 
-  const schedule = buildDimensionSchedule(block.trials);
+  const leadingAttributeTrials = block.kind === 'scored' ? ACTIVITY_CONFIG.blocks.leadingAttributeTrials : 0;
+  const schedule = buildDimensionSchedule(block.trials, leadingAttributeTrials);
   const flags = assignFocalFlags(schedule);
   const categories = schedule.map((dimension, index) =>
     categoryFor(dimension, flags[index], block.pairing, focalAttribute, otherAttribute),

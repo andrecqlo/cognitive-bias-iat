@@ -46,8 +46,16 @@ produces.
 
 ## What the implementation does
 
-**Structure.** A 16-trial unscored warm-up, then four scored blocks of 20. Blocks alternate which target is
-focal and are read as two consecutive pairs; each pair yields its own D and the two are averaged.
+**Structure.** A 12-trial unscored warm-up, then four scored blocks of 20 — 92 trials. Blocks alternate
+which target is focal and are read as two consecutive pairs; each pair yields its own D and the two are
+averaged.
+
+**Warm-up length.** Set to the number of distinct words, so each is met exactly once before anything counts.
+That property depends on the warm-up skipping the leading attribute-only run: it is never scored, so it has
+nothing to discard, and straight alternation splits its trials evenly between the two dimensions. With the
+scored blocks' composition, 12 trials would be 8 attribute and 4 target, and one word from each target
+category would never appear. Shorter than the published 16 — exact coverage bought with two fewer
+rehearsals of the mechanic.
 
 **Focal mechanic.** Two categories are named; the participant answers whether the word belongs to one of
 them. The focal response is the right-hand key, fixed for every session — the published procedure uses that
@@ -73,11 +81,11 @@ D-score. Those labels are effect-size conventions describing the size of a gap, 
 activity cannot support a size. The response-time means and the millisecond gap are still shown: they are
 descriptive rather than interpretive, and they are what makes the result discussable.
 
-**Definitions before anything.** Every stimulus is defined on its own screen before the instructions, which
-sit before the warm-up. A word met for the first time mid-block is classified slowly because it is
-unfamiliar, and that slowness lands in the score as though it were an association. `content.test.ts` fails
-the build if any stimulus is missing from the definitions, and if any category label also appears in its own
-word list.
+**Definitions before anything.** A table of every category, what it means and the words it will use, shown
+before the instructions and so before the warm-up. A word met for the first time mid-block is classified
+slowly because it is unfamiliar, and that slowness lands in the score as though it were an association. The
+words column is generated from `stimuli`, so coverage is structural rather than checked; `content.test.ts`
+still fails the build if a category has no explanation, or if a label also appears in its own word list.
 
 ## What is still imperfect
 
@@ -117,12 +125,12 @@ on length, frequency and semantic scope — at the cost of a partial visual shor
 category. Retained because the pairing benefit outweighs it; swap one item for "inept" or "careless" if
 piloting shows suspiciously fast sorting on that side.
 
-**Nobody has timed a real run.** The 4–6 minute figure in the copy is built from 96 trials at conventional
+**Nobody has timed a real run.** The 4–6 minute figure in the copy is built from 92 trials at conventional
 latencies plus per-screen reading estimates. It is an order of magnitude, not a measurement.
 
 ## Duration estimate
 
-96 trials. The only fixed delay in the trial loop is the 220 ms feedback pause before the next stimulus
+92 trials. The only fixed delay in the trial loop is the 220 ms feedback pause before the next stimulus
 (90 ms under reduced motion) — no fixation cross, no inter-trial interval — so a trial costs reaction time
 plus 220 ms, and errors cost more because the recorded time runs to the *correct* response.
 

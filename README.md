@@ -49,9 +49,9 @@ attribute stays focal throughout and the target swaps between blocks — that co
 | --- | --- | --- |
 | 1 | Landing | What the method is, plus a picker for the available activities |
 | 2 | Important information | Limitations, plus a required acknowledgement |
-| 3 | Definitions | Every word the activity uses, explained before any trial |
+| 3 | Definitions | A table of each category, what it means, and the words it will use |
 | 4 | Instructions | Short list and an interactive demonstration |
-| 5 | Warm-up | 16 unscored trials teaching the mechanic and the word lists |
+| 5 | Warm-up | 12 unscored trials — every word once, before anything counts |
 | 6–9 | Four scored blocks | 20 trials each, announced by a screen naming the focal pair |
 | 10 | Result choice | Show or skip, given equal weight |
 | 11 | Result | Response-time direction with its caveats, or straight to completion |
@@ -60,10 +60,20 @@ attribute stays focal throughout and the target swaps between blocks — that co
 The definitions screen is part of the procedure, not background reading. A word met for the first time in
 the middle of a block is classified slowly because it is unfamiliar rather than because of any association,
 and that slowness lands in the score. It sits before the instructions so the category names the
-demonstration uses have already been explained. `content.test.ts` fails the build if any stimulus is
-missing from the definitions.
+demonstration uses have already been explained. Its words column is generated from `stimuli`, so it cannot
+fall out of step with what the trials show.
 
-96 trials in total. The four scored blocks alternate the focal target and are read as two consecutive
+The warm-up is 12 trials because there are 12 words, and it shows **each of them exactly once**. That works
+only because the warm-up skips the leading attribute-only run that opens a scored block — it is never
+scored, so it has nothing to discard, and straight alternation splits its trials evenly between targets and
+attributes. Keep the leading run at the same length and the warm-up becomes two thirds attributes, with one
+word from each target category never appearing. `generateTrials.test.ts` asserts the exact-once property
+over 100 generated warm-ups.
+
+This is shorter than the 16 trials of the published procedure — exact coverage of the word lists, bought
+with two fewer rehearsals of the mechanic itself.
+
+92 trials in total. The four scored blocks alternate the focal target and are read as two consecutive
 **pairs**, each yielding its own D; the two are averaged, so the second pair acts as a replication of the
 first rather than as more of the same data.
 

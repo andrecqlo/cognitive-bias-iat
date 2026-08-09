@@ -19,8 +19,18 @@ export const ACTIVITY_CONFIG = {
      * Unscored block that teaches the focal/non-focal mechanic before anything
      * counts. Excluded from the score entirely: the 2014 paper found warm-up
      * trials did not contribute positively to reliability or validity.
+     *
+     * Set to the total number of distinct words, so every one of them is met
+     * once before anything is scored. That only works because the warm-up skips
+     * the leading attribute-only run — see `buildDimensionSchedule`. With the
+     * scored blocks' composition, 12 trials would be 8 attribute and 4 target,
+     * and one word from each target category would never appear.
+     *
+     * Shorter than the 16 of the published procedure. The trade is deliberate:
+     * exact coverage of the word lists, against two fewer trials of practice at
+     * the mechanic itself.
      */
-    warmUpTrials: 16,
+    warmUpTrials: 12,
     /** Trials in each of the four scored blocks. The recommended BIAT length. */
     scoredBlockTrials: 20,
     /**

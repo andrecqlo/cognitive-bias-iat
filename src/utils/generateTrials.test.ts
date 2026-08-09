@@ -53,21 +53,30 @@ const isAttributeTrial = (trial: Trial) => trial.category === 'attributeA' || tr
 const isTargetTrial = (trial: Trial) => trial.category === 'targetA' || trial.category === 'targetB';
 
 describe('buildDimensionSchedule', () => {
-  it('opens every block with the attribute-only run the procedure discards', () => {
-    const schedule = buildDimensionSchedule(scoredBlockTrials);
+  it('opens a scored block with the attribute-only run the procedure discards', () => {
+    const schedule = buildDimensionSchedule(scoredBlockTrials, leadingAttributeTrials);
     expect(schedule.slice(0, leadingAttributeTrials)).toEqual(Array(leadingAttributeTrials).fill('attribute'));
   });
 
   it('alternates category and attribute after the opening run', () => {
-    const schedule = buildDimensionSchedule(scoredBlockTrials).slice(leadingAttributeTrials);
+    const schedule = buildDimensionSchedule(scoredBlockTrials, leadingAttributeTrials).slice(leadingAttributeTrials);
     schedule.forEach((dimension, index) => {
       expect(dimension).toBe(index % 2 === 0 ? 'target' : 'attribute');
     });
   });
 
+  it('splits the warm-up evenly, having no opening run to discard', () => {
+    // The even split is what lets a warm-up as long as the word lists show
+    // every word once. Keeping the opening run would make it two thirds
+    // attributes, and a target word from each category would never appear.
+    const schedule = buildDimensionSchedule(warmUpTrials, 0);
+    expect(schedule.filter((dimension) => dimension === 'target')).toHaveLength(warmUpTrials / 2);
+    expect(schedule.filter((dimension) => dimension === 'attribute')).toHaveLength(warmUpTrials / 2);
+  });
+
   it('produces exactly the requested number of positions', () => {
-    expect(buildDimensionSchedule(warmUpTrials)).toHaveLength(warmUpTrials);
-    expect(buildDimensionSchedule(scoredBlockTrials)).toHaveLength(scoredBlockTrials);
+    expect(buildDimensionSchedule(warmUpTrials, 0)).toHaveLength(warmUpTrials);
+    expect(buildDimensionSchedule(scoredBlockTrials, leadingAttributeTrials)).toHaveLength(scoredBlockTrials);
   });
 });
 
@@ -145,6 +154,18 @@ describe('generateBlockTrials', () => {
       expect(trial.pairing).toBeNull();
       expect(trial.pairIndex).toBeNull();
     });
+  });
+
+  it('shows every word exactly once in the warm-up', () => {
+    // The whole point of a warm-up as long as the word lists: nothing is read
+    // for the first time once trials start counting.
+    const everyWord = Object.values(ACTIVITY.stimuli).flat();
+    expect(warmUpTrials).toBe(everyWord.length);
+
+    for (let run = 0; run < RUNS; run += 1) {
+      const shown = generateBlockTrials(ACTIVITY, WARM_UP_BLOCK).map((trial) => trial.stimulus);
+      expect(shown.slice().sort()).toEqual(everyWord.slice().sort());
+    }
   });
 
   it('gives every trial a unique id', () => {

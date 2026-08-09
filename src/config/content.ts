@@ -17,11 +17,16 @@ const ACCESSIBILITY_NOTE = 'It relies on timed visual sorting, which will not su
 export const CONTENT = {
   landing: {
     heading: 'Hidden Associations',
-    subtitle: 'Detecting subconscious associations, based on the Brief Implicit Association Test.',
+    subtitle: 'Detecting subconscious associations using the Brief Implicit Association Test.',
     intro:
       'This activity looks at how quickly you link certain ideas — associations we often hold without realising. Results shift with mood, fatigue and repetition, and a single score is a poor predictor of how you actually behave. Treat it as a prompt to reflect, not a verdict.',
     chooseHeading: 'Choose an activity',
-    chooseHint: 'Each one uses the same method with a different set of words.',
+    /**
+     * The reliability framing is not repeated here: the intro three lines above
+     * already carries it, and saying it twice on one screen reads as a
+     * disclaimer rather than as a caution worth reading.
+     */
+    chooseHint: 'Each one examines a different set of hidden associations you might hold. None is a diagnosis.',
     facts: ['Takes 4–6 minutes', 'Works on mobile and desktop', 'No sign-up', 'Your result stays on your device'],
     startButton: 'Start',
     /** The one explainer on the page: what the method is and what you will do.
@@ -96,7 +101,13 @@ export const CONTENT = {
    */
   definitions: {
     heading: 'What these words mean',
-    intro: 'Two of these appear as category headings throughout. Read them before you start.',
+    intro:
+      'These four categories appear as headings throughout, and the words beside them are the ones you will be sorting. Read them before you start.',
+    columns: {
+      category: 'Category',
+      meaning: 'What it means',
+      words: 'Words you will see',
+    },
     continueButton: 'Continue',
     backButton: 'Back',
   },

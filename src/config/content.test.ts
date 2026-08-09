@@ -5,19 +5,14 @@ import { ACTIVITIES, ATTRIBUTE_SLOTS, TARGET_SLOTS, nonFocalAttribute, type Cate
 const ALL_SLOTS: CategorySlot[] = [...TARGET_SLOTS, ...ATTRIBUTE_SLOTS];
 
 describe.each(ACTIVITIES.map((activity) => [activity.title, activity] as const))('%s', (_title, activity) => {
-  it('defines every word it will show', () => {
+  it('explains every category before the activity starts', () => {
     // A word met for the first time mid-block is classified slowly because it
     // is unfamiliar, not because of any association — and that lands in the
-    // score. The definitions screen exists to spend that cost up front.
-    const defined = activity.definitions
-      .map((entry) => `${entry.term} ${entry.definition}`)
-      .join(' ')
-      .toLowerCase();
-
+    // score. The definitions screen exists to spend that cost up front; it
+    // lists each category's words from `stimuli`, so coverage is structural and
+    // only the explanations need checking here.
     ALL_SLOTS.forEach((slot) => {
-      activity.stimuli[slot].forEach((word) => {
-        expect(defined, `"${word}" is never defined`).toContain(word.toLowerCase());
-      });
+      expect(activity.definitions[slot]?.trim(), `${slot} has no definition`).toBeTruthy();
     });
   });
 
