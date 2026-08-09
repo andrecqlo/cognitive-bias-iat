@@ -1,4 +1,4 @@
-# Hidden Associations: Neurodiversity Edition
+# Hidden Associations
 
 A short, private web activity that explores automatic associations between neurodivergence and perceived
 competence. It takes 4–6 minutes, runs entirely in the browser, and collects nothing.
