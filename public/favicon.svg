@@ -1,14 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Hidden Associations">
-  <!-- Solid tile rather than a bare glyph, so the mark holds on both light and
-       dark tab bars. Flat fill, no gradient, in line with the palette. -->
-  <rect width="32" height="32" rx="6" fill="#6d28d9" />
-  <g fill="none" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Two mirrored lobes and a centre line: the detail is lost at 16px, but
-         the silhouette still reads as a brain. -->
-    <path d="M16 8.6v14.8" />
-    <path d="M16 9.4c-1.3-1.5-3.9-1.3-4.9.3-1.9-.3-3.3 1.3-2.9 3-1.6.8-1.9 3-.5 4.2-1.1 1.4-.4 3.5 1.2 4 .1 1.9 2.1 3 3.8 2.2.9 1.3 3 1.1 3.3-.5" />
-    <path d="M16 9.4c1.3-1.5 3.9-1.3 4.9.3 1.9-.3 3.3 1.3 2.9 3 1.6.8 1.9 3 .5 4.2 1.1 1.4.4 3.5-1.2 4-.1 1.9-2.1 3-3.8 2.2-.9 1.3-3 1.1-3.3-.5" />
-    <path d="M11.9 13.4c1.3.3 2.4 1.3 2.7 2.6" />
-    <path d="M20.1 13.4c-1.3.3-2.4 1.3-2.7 2.6" />
-  </g>
+  <rect width="32" height="32" rx="8" fill="#282D37" />
+  <circle cx="12" cy="16" r="6" fill="#6D28D9" />
+  <circle cx="21" cy="16" r="6" fill="none" stroke="#FFFFFF" stroke-width="2" />
 </svg>
