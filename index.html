@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <!-- No maximum-scale, so browser zoom up to 200% remains available. -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <!-- Versioned query: browsers cache favicons in a separate store that often
+         survives a hard reload, so the filename alone will not shift them.
+         Bump ?v= whenever favicon.svg changes. -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=2" />
     <meta name="theme-color" content="#282D37" />
     <meta name="description" content="Hidden Associations — a short, private workplace activity examining unconscious biases using the Brief Implicit Association Test." />
     <meta name="robots" content="noindex" />
