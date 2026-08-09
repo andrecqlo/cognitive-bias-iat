@@ -33,7 +33,7 @@ export const CONTENT = {
      * Split across two toggles it repeated itself. */
     howItWorksToggle: 'How does this work?',
     howItWorks:
-      'Each round names two categories to watch for. A word appears, and you say whether it belongs to one of those two or not, as quickly as you can. Part-way through, one of the two categories changes. Most people are quicker when the pair matches an association they already hold, and that gap in speed is what gets measured. At the end you choose whether to see a private comparison of your response times.',
+      'Two categories are named on screen, and you say as quickly as you can whether the word in the middle belongs to one of them. One of the two stays the same throughout; the other swaps between rounds. There are four short rounds, plus a warm-up that does not count. Most people are quicker when the pair matches an association they already hold, and comparing those speeds is what this does. At the end you choose whether to see your own comparison — it names which pairing you were quicker on, not how large the difference was.',
     referencesToggle: 'Where to read more',
     referencesHint: 'These open in a new tab, on sites outside this one.',
     /**
