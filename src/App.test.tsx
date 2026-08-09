@@ -276,10 +276,13 @@ describe('Hidden Associations activity', () => {
     fireEvent.click(screen.getByRole('button', { name: CONTENT.resultChoice.showButton }));
 
     expect(screen.getByRole('heading', { level: 1, name: CONTENT.result.heading })).toBeInTheDocument();
-    expect(screen.getByText(CONTENT.result.disclaimer)).toBeInTheDocument();
-    expect(screen.getByText(CONTENT.result.whatDoesThisMeanToggle)).toBeInTheDocument();
-    // Result wording must never describe the participant themselves.
-    expect(screen.queryByText(/\bbiased\b|\bprejudice/i)).not.toBeInTheDocument();
+    expect(screen.getByText(CONTENT.result.caveat)).toBeInTheDocument();
+    CONTENT.result.sections.forEach((section) => {
+      expect(screen.getByText(section.toggle)).toBeInTheDocument();
+    });
+    // The caveat says "biased or bias-free" in order to deny both. What must
+    // never appear is the page describing the participant as either.
+    expect(screen.queryByText(/you (are|were|may be|might be) (biased|prejudiced)/i)).not.toBeInTheDocument();
   });
 
   it('reports a direction without any size, and without printing the score', () => {
@@ -287,10 +290,26 @@ describe('Hidden Associations activity', () => {
     completeActivity();
     fireEvent.click(screen.getByRole('button', { name: CONTENT.resultChoice.showButton }));
 
-    expect(screen.getByText(CONTENT.result.noStrengthNote)).toBeInTheDocument();
     // No effect-size wording, and no bare figure for a reader to over-read.
     expect(screen.queryByText(/\bslight(ly)?\b|\bmoderate(ly)?\b|\bstrong(ly)?\b|\bmarkedly\b/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^-?\d\.\d{2}$/)).not.toBeInTheDocument();
+  });
+
+  it('shows a response time in seconds for each focal pair', () => {
+    render(<App />);
+    completeActivity();
+    fireEvent.click(screen.getByRole('button', { name: CONTENT.resultChoice.showButton }));
+
+    [ACTIVITY.labels.targetA, ACTIVITY.labels.targetB].forEach((label) => {
+      const caption = CONTENT.result.barCaption
+        .replace('{category}', label)
+        .replace('{attribute}', ACTIVITY.labels[ACTIVITY.focalAttribute]);
+      expect(screen.getByText(caption)).toBeInTheDocument();
+    });
+
+    // Two seconds figures, two places each, and no leftover placeholder.
+    expect(screen.getAllByText(/^\d+\.\d{2}s$/)).toHaveLength(2);
+    expect(screen.queryByText(/\{[a-z]+\}/i)).not.toBeInTheDocument();
   });
 
   it('offers the references as external links that cannot reach back into this page', () => {

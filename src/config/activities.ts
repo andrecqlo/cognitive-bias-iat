@@ -84,20 +84,6 @@ export interface ActivityDefinition {
    * measure while looking like it still worked.
    */
   focalAttribute: AttributeSlot;
-  /** Names for the two focal pairs, used on the result page. */
-  blockLabels: { targetAFocal: string; targetBFocal: string };
-  /**
-   * Result sentences. `fasterWithTargetA` is used when the blocks with targetA
-   * focal were the quicker ones.
-   *
-   * No sentence carries a size. The activity reports which way response times
-   * ran and stops there.
-   */
-  result: {
-    fasterWithTargetA: string;
-    fasterWithTargetB: string;
-    similar: string;
-  };
 }
 
 /**
@@ -144,7 +130,10 @@ export interface ActivityDefinition {
 const NEURODIVERSITY: ActivityDefinition = {
   id: 'neurodiversity',
   title: 'Neurodiversity and competence',
-  summary: 'Do “Neurodivergent” and “Competent” feel as connected to you as “Neuromajority” and “Competent”?',
+  /** The gloss on "Neuromajority" is here because the picker comes before the
+   * definitions screen, so this is where a reader meets the term cold. */
+  summary:
+    'Do “Neurodivergent” and “Competent” feel as connected to you as “Neuromajority” (i.e. neurotypical) and “Competent”?',
   labels: {
     targetA: 'Neurodivergent',
     targetB: 'Neuromajority',
@@ -165,17 +154,6 @@ const NEURODIVERSITY: ActivityDefinition = {
   },
   /** "Competent" — the positive attribute, as good-focal requires. */
   focalAttribute: 'attributeA',
-  blockLabels: {
-    targetAFocal: 'Neurodivergent + Competent',
-    targetBFocal: 'Neuromajority + Competent',
-  },
-  result: {
-    fasterWithTargetA:
-      'You were faster when “Neurodivergent” and “Competent” were the two categories to watch for than when “Neuromajority” and “Competent” were.',
-    fasterWithTargetB:
-      'You were faster when “Neuromajority” and “Competent” were the two categories to watch for than when “Neurodivergent” and “Competent” were.',
-    similar: 'You responded at about the same speed whichever pair of categories you were watching for.',
-  },
 };
 
 export const ACTIVITIES: readonly ActivityDefinition[] = [NEURODIVERSITY];

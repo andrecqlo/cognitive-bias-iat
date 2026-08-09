@@ -147,13 +147,24 @@ reader on their own has nobody to tell them that a "moderate" is not a moderate 
 the response times ran is the most this can carry, so it is all it says — and the D-score figure is not
 printed either, behind a disclosure or otherwise, because a bare number is a size by another route.
 
-What the page does show is the two response-time means and the gap in milliseconds. Those are descriptive
-rather than interpretive, and they are what makes the result discussable.
+What the page does show is the two response-time means as seconds to two places, one bar each, and the gap
+between them in the same units. Those are descriptive rather than interpretive, and they are what makes the
+result discussable.
 
-Every result — including "about the same" — displays a note on the contribution of chance and on the modest
-test-retest stability of this kind of activity. That note sits **above** the result sentence, not below it,
-and is not behind a toggle. People read this page alone, with nobody to add context, so the caveat has to
-arrive before the sentence it qualifies; underneath, it reads as a footnote to a finding already accepted.
+In the null state the gap line says the two averages were close together next to how much the participant's
+times varied overall. It deliberately does **not** say the gap is "within the range chance would produce":
+nothing in the scoring builds a null distribution or an interval, 0.15 is an effect-size convention rather
+than a significance threshold, and phrasing it that way would claim an inference the activity never makes.
+`content.test.ts` fails the build if that wording creeps back in.
+
+Every result — including "about the same" — displays the same caveat block: one sitting is rough, no result
+in any direction certifies anyone as biased or bias-free, and nothing has been saved or shared. It sits
+**above** the result sentence, not below it, and is not behind a toggle. People read this page alone, with
+nobody to add context, so the caveat has to arrive before the sentence it qualifies; underneath, it reads as
+a footnote to a finding already accepted.
+
+Two expandable sections close the page — "Why does speed matter?" and "Where might associations show up at
+work?" — both written to read the same whichever direction the result went.
 
 #### Quality flags
 

@@ -17,9 +17,28 @@ const ACCESSIBILITY_NOTE = 'It relies on timed visual sorting, which will not su
 export const CONTENT = {
   landing: {
     heading: 'Hidden Associations',
-    subtitle: 'Detecting subconscious associations using the Brief Implicit Association Test.',
+    /**
+     * ## The vocabulary, fixed
+     *
+     * **"Unconscious bias"** is the term throughout — not "subconscious", not
+     * "cognitive bias", not "implicit bias". One noun across every screen, so a
+     * reader is never wondering whether three names mean three things.
+     * `content.test.ts` fails the build if the others reappear.
+     *
+     * **"Examining"**, never "detecting", "determining" or "measuring". The
+     * activity does not find a thing that is there; it gives you something to
+     * look at. That word carries the whole difference between a prompt and a
+     * diagnosis.
+     *
+     * The register the copy has to hold, on every screen: not diagnostic, not
+     * reliable on its own, but worth looking at — and the reflection it prompts
+     * is the point rather than the result it produces. Each leg is carried
+     * somewhere: "not a verdict" here, "none is a diagnosis" on the picker,
+     * "a different day could give a different result" on the result page.
+     */
+    subtitle: 'Examining unconscious biases using the Brief Implicit Association Test.',
     intro:
-      'This activity looks at how quickly you link certain ideas — associations we often hold without realising. Results shift with mood, fatigue and repetition, and a single score is a poor predictor of how you actually behave. Treat it as a prompt to reflect, not a verdict.',
+      'This activity looks at how quickly you link certain ideas. This can help us examine our unconscious biases — associations we often hold without realising. Results shift with mood, fatigue and repetition, and a single score is a poor predictor of how you actually behave. Treat it as a prompt to reflect, not a verdict.',
     chooseHeading: 'Choose an activity',
     /**
      * The reliability framing is not repeated here: the intro three lines above
@@ -164,53 +183,66 @@ export const CONTENT = {
   },
   result: {
     heading: 'Your result',
-    /** The topic-specific sentences live on each activity; this one does not vary. */
+    /**
+     * A third state the two below cannot cover: too little usable data to
+     * compare anything. Without it the page would render a direction off a
+     * null score.
+     */
     incomplete: 'There were not enough usable responses to compare the two halves of the activity.',
+    /**
+     * The two states a scored result can take, chosen by the same threshold the
+     * scoring uses. `{attribute}` is the focal attribute, `{faster}` and
+     * `{slower}` the two targets — templated rather than written per activity so
+     * every topic is worded identically.
+     *
+     * No size word appears in either, and the score itself is never printed.
+     */
+    lean: 'In this sitting, your responses leaned towards pairing {attribute} with {faster} more readily than with {slower}.',
+    similar: 'In this sitting, your responses showed little difference either way.',
     /**
      * Shown on every result, whatever the outcome, and placed *above* the
      * result sentence rather than below it. People read this page alone, with
      * nobody to add context, so the caveat has to arrive before the sentence it
      * qualifies — underneath, it reads as a footnote to a finding they have
      * already accepted. Do not move it below, and do not hide it behind a
-     * toggle: the bands describe how large a gap is and can say nothing at all
-     * about how much to trust it.
+     * toggle.
      */
-    chanceNoteHeading: 'Before you read this',
-    chanceNote:
-      'Some of what follows is chance. A short activity like this is not a stable measure of a person—repeat it another day and many people land somewhere different. Response times also move with attention, tiredness, reading speed, how familiar the words feel, your device, and which pair of categories you happened to see first.',
-    disclaimer:
-      'This does not mean you consciously hold any particular belief about neurodivergent people. It describes your response times during one short activity, and nothing more.',
-    whatDoesThisMeanToggle: 'What does this mean?',
-    whatDoesThisMean:
-      'Quick associations are shaped by language, culture, media and everyday experience. They are not the same thing as your beliefs, your behaviour or your character, and a reaction-time activity cannot tell you which of those you have. The useful question is not “what does my score say about me?” but “where might associations like these come from, and where might they show up at work?”',
+    caveatHeading: 'Before you read this',
+    caveat:
+      'One sitting is a rough measure — a different day could give a different result. No result here, in any direction, certifies anyone as biased or bias-free. Nothing from this activity has been saved or shared; this result exists only on this screen.',
     /** The specific causes are listed underneath, so this must not name one. */
     qualityWarning:
       'Something about this session makes the comparison less dependable than usual. Treat it as a rough impression.',
-    /**
-     * Why the page names a direction and stops.
-     *
-     * The conventional slight / moderate / strong labels are effect-size
-     * conventions: they describe how large a gap is. One sitting of a short
-     * activity cannot support a size, and a reader on their own has nobody to
-     * tell them that a "moderate" is not a moderate anything. Naming which way
-     * the times ran is the most this can carry, so it is all it says.
-     */
-    noStrengthNote:
-      'This says which way your response times ran, not how big the difference was. A single short activity cannot support a size, so none is given.',
     comparisonHeading: 'Response time comparison',
-    detailHeading: 'Detail',
-    differenceLabel: 'Difference between the two',
-    labels: {
-      meanRow: 'Average response time',
-      accuracyRow: 'Right first time',
-      usableRow: 'Responses counted',
-      meanPrefix: 'Average response time',
-    },
+    /** `{category}` is a target label, `{attribute}` the focal attribute. */
+    barCaption: 'Blocks focusing on {category} + {attribute}',
+    gap: 'You were about {seconds} seconds faster when {category} and {attribute} were your focus.',
+    /**
+     * Deliberately not "within the range chance would produce". Nothing here
+     * computes a null distribution or an interval, and 0.15 is a conventional
+     * effect-size boundary rather than a significance threshold. What a score
+     * under it actually means is this: the gap is small next to how much the
+     * participant's own times varied. Say that, and no more.
+     */
+    gapSimilar:
+      'Your two averages were close together next to how much your response times varied overall — too close for this activity to read anything into.',
+    /** Guards a gap that rounds to 0.00 seconds from claiming to be nothing. */
+    gapBelowResolution: 'less than 0.01',
+    sections: [
+      {
+        toggle: 'Why does speed matter?',
+        body: 'Sorting is quicker when the two categories on screen already sit together in your mind: the link is well practised, so less effort goes into holding it. When they sit less easily together, the same task takes a fraction longer. That difference is what this activity compares. It reflects what you have been exposed to — language, media, who you have worked alongside — rather than what you believe, and a reaction time cannot tell you which of the two it has picked up.',
+      },
+      {
+        toggle: 'Where might associations show up at work?',
+        body: 'Rarely in what anyone says. More often in small, fast decisions nobody deliberates over: who gets offered the stretch project, whose estimate is taken at face value, how quickly a request for an adjustment is agreed, whose idea gets built on and whose gets restated by someone else first. The useful question is not whether you hold an association, but where a quick judgement might be doing work that a slower one would do better.',
+      },
+    ],
     continueButton: 'Continue',
   },
   completion: {
     heading: 'Activity complete',
-    body: 'Thank you for taking part. This activity exists to prompt reflection about how quickly associations form—not to judge or label anyone.',
+    body: 'Thank you for taking part. This activity exists to prompt reflection about how quickly associations form — not to judge or label anyone.',
     startAgainButton: 'Start again',
     clearSessionButton: 'Clear my session',
     homeButton: 'Return to home',

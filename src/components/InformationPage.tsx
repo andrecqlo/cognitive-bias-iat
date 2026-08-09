@@ -27,11 +27,13 @@ export function InformationPage({ acknowledged, onAcknowledge, onContinue, onBac
 
       <Card className="mt-8">
         <label className="flex cursor-pointer items-start gap-3">
+          {/* The accent reads the palette variable rather than a literal, so it
+              cannot be left behind when the brand colour changes. */}
           <input
             type="checkbox"
             checked={acknowledged}
             onChange={(event) => onAcknowledge(event.target.checked)}
-            className="mt-0.5 size-6 shrink-0 accent-[#FF6223]"
+            className="mt-0.5 size-6 shrink-0 accent-[var(--color-signal)]"
           />
           <span className="leading-relaxed text-ink">{information.acknowledgement}</span>
         </label>

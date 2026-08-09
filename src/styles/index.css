@@ -6,8 +6,10 @@
   --color-ink: #282d37;
   --color-ink-soft: #3c4250;
   --color-muted: #5c6371;
-  --color-signal: #ff6223;
-  --color-signal-tint: #ffece3;
+  /* Royal purple. 7.10:1 on --color-surface, so unlike the orange it replaced
+     it is safe for text as well as for rules, markers and the focus ring. */
+  --color-signal: #6d28d9;
+  --color-signal-tint: #f3edfd;
   --color-canvas: #f4f5f7;
   --color-surface: #ffffff;
   --color-line: #d7dbe1;

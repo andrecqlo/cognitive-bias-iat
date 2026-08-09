@@ -78,8 +78,14 @@ of every block, keep error trials, recode latencies into [400, 2000], then D per
 **Reporting.** Direction only. There is one threshold — |D| ≥ 0.15 names the quicker pair, below it the two
 halves are reported as about the same — and no slight/moderate/strong labels, no band table, and no printed
 D-score. Those labels are effect-size conventions describing the size of a gap, and one sitting of a short
-activity cannot support a size. The response-time means and the millisecond gap are still shown: they are
-descriptive rather than interpretive, and they are what makes the result discussable.
+activity cannot support a size. The two means and the gap between them are still shown, as seconds to two
+places: descriptive rather than interpretive, and what makes the result discussable.
+
+The null-state wording is worth guarding. "The gap was within the range chance would produce" is the obvious
+sentence to write there and it is wrong: the scoring computes no null distribution and no interval, and 0.15
+is a convention borrowed from effect-size reporting rather than a significance threshold. What a score below
+it supports is only that the gap is small next to the participant's own spread, which is what the page says.
+`content.test.ts` fails the build if chance or significance language returns.
 
 **Definitions before anything.** A table of every category, what it means and the words it will use, shown
 before the instructions and so before the warm-up. A word met for the first time mid-block is classified
