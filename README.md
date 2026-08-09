@@ -1,7 +1,10 @@
 # Hidden Associations: Neurodiversity Edition
 
 A short, private web activity that explores automatic associations between neurodivergence and perceived
-competence. It takes around 2–3 minutes, runs entirely in the browser, and collects nothing.
+competence. It takes 4–6 minutes, runs entirely in the browser, and collects nothing.
+
+The procedure is a **Brief IAT** (Sriram & Greenwald, 2009), scored by the recommended algorithm in Nosek,
+Bar-Anan, Sriram & Greenwald (2014).
 
 ## What this is, and what it is not
 
@@ -38,30 +41,47 @@ Requires Node 20 or newer.
 
 ## How the activity is structured
 
+The participant is shown two **focal** categories and answers one question per trial: does this word belong
+to one of those two, or not? The focal response is the right-hand side, everything else is the left. One
+attribute stays focal throughout and the target swaps between blocks — that contrast is the whole measure.
+
 | Step | Screen | Notes |
 | --- | --- | --- |
-| 1 | Landing | What an IAT is, plus a picker for the available activities |
+| 1 | Landing | What the method is, plus a picker for the available activities |
 | 2 | Important information | Limitations, plus a required acknowledgement |
-| 3 | Instructions | Short list and an interactive demonstration |
-| 4 | Practice | 16 trials: Neurodivergent vs Neurotypical, then Competent vs Incompetent |
-| 5 | Round 1 | 40 scored trials with one combined pairing |
-| 6 | Transition | New pairings shown, 20 practice trials, then a manual start |
-| 7 | Round 2 | 40 scored trials with the other combined pairing |
-| 8 | Result choice | Show or skip, given equal weight |
-| 9 | Result | Response-time pattern with its caveats, or straight to completion |
-| 10 | Completion | Start again, clear session, or return home |
+| 3 | Definitions | Every word the activity uses, explained before any trial |
+| 4 | Instructions | Short list and an interactive demonstration |
+| 5 | Warm-up | 16 unscored trials teaching the mechanic and the word lists |
+| 6–9 | Four scored blocks | 20 trials each, announced by a screen naming the focal pair |
+| 10 | Result choice | Show or skip, given equal weight |
+| 11 | Result | Response-time direction with its caveats, or straight to completion |
+| 12 | Completion | Start again, clear session, or return home |
 
-This is a shortened educational demonstration, not a seven-block research IAT.
+The definitions screen is part of the procedure, not background reading. A word met for the first time in
+the middle of a block is classified slowly because it is unfamiliar rather than because of any association,
+and that slowness lands in the score. It sits before the instructions so the category names the
+demonstration uses have already been explained. `content.test.ts` fails the build if any stimulus is
+missing from the definitions.
 
-Randomised once per session: which pairing comes first, and which pair of categories sits on the left.
+96 trials in total. The four scored blocks alternate the focal target and are read as two consecutive
+**pairs**, each yielding its own D; the two are averaged, so the second pair acts as a replication of the
+first rather than as more of the same data.
+
+Randomised once per session: which target is focal first. The focal side is fixed at the right-hand key,
+matching the published procedure the reliability figures come from.
+
+Why a BIAT rather than a shortened seven-block IAT: truncating a full IAT is the one approach with explicit
+guidance against it — Greenwald et al. (2022) warn that reliability suffers when trial counts are cut below
+the recommended numbers — whereas the BIAT is short by construction and ranked marginally ahead of the full
+IAT across 29 criteria in Bar-Anan & Nosek's (2014) comparison of seven indirect measures.
 
 ### Result calculation
 
-The activity computes a **D-score**, following the standard IAT scoring algorithm (Greenwald, Nosek &
-Banaji, 2003):
+The activity computes a **D-score** for each block pair and averages them:
 
 ```
-D = (mean of Pairing A − mean of Pairing B) / SD of all usable responses across both rounds
+D(pair) = (mean of targetA-focal block − mean of targetB-focal block) / SD of all scored responses in the pair
+D        = mean of the two pair scores
 ```
 
 The divisor is the spread of *that participant's own* responses. This is the point of the algorithm: it puts
@@ -69,57 +89,104 @@ a fast, consistent responder and a slow, erratic one on the same scale, so the s
 strong result for one person and a slight one for another. No assumed value for anyone's response speed or
 variability appears anywhere in the code.
 
-A negative score means Pairing A (Neurodivergent + Incompetent) was the quicker round; positive means
-Pairing B was.
+A negative score means the blocks with Neurodivergent focal were the quicker ones; positive means
+Neurotypical.
 
 #### What counts
 
 Each trial records the time to the **correct** response, including time spent on a wrong answer first. The
 activity requires the correct side before advancing, which is the design the D-score's built-in error
 penalty assumes — so an error costs what it cost, no separate penalty is added, and **error trials stay in
-the calculation**. Removing them would remove exactly the trials where the pairing was hardest.
+the calculation**. Removing them would remove exactly the trials where the focal pair was hardest.
 
-Excluded: practice trials, the first four trials of each scored round, responses under 300 ms or over
-10,000 ms, and trials affected by a tab switch, focus loss or a long browser pause.
+The scoring steps, in order:
 
-The first four trials of each round come out because round 1 goes straight from single-category practice
-into scoring while round 2 gets a combined warm-up first. Dropping the same opening trials from both rounds
-puts them on equal footing without making the activity longer. Those trials are still shown, and still count
-towards accuracy.
+1. Drop warm-up trials, and any trial affected by a tab switch, focus loss or a long browser pause.
+2. Drop responses over 10,000 ms.
+3. Drop the first four trials of **every** block.
+4. Keep error trials.
+5. Recode responses under 400 ms up to 400 ms, and over 2,000 ms down to 2,000 ms.
+6. Compute D per block pair, then average.
 
-#### Bands
+Steps 2 to 5 are the recommended BIAT procedure. Note that step 5 *recodes* rather than excludes: a very
+fast response is usually anticipation and a very slow one usually inattention, but the participant was still
+on that trial, so recoding keeps the trial and removes only its leverage over the mean.
+
+The four dropped trials at the head of each block are the attribute-only run every block opens with. They
+are still shown, and still count towards accuracy.
+
+#### Good-focal
+
+The **positive** attribute is the one held focal. This is not cosmetic: good-focal and bad-focal blocks are
+structurally identical, and good-focal blocks carry roughly three times the shared variance (Nosek et al.,
+2014). `ActivityDefinition.focalAttribute` must point at the positive attribute — pointing it at the
+unflattering one would throw away most of the measure while looking like it still worked.
+
+#### Direction only
+
+There is one threshold, not four bands:
 
 | \|D\| | Reported as |
 | --- | --- |
-| Under 0.15 | Little or none — no direction named |
-| 0.15 – 0.34 | Slight |
-| 0.35 – 0.64 | Moderate |
-| 0.65 and above | Strong |
+| Under 0.15 | About the same speed either way — no direction named |
+| 0.15 and above | The quicker pair is named, with no size attached |
 
-These are the conventional Project Implicit bands. **They describe how large a gap is, not how confident
-anyone should be that it is real or that it would reappear tomorrow.** The bands cannot carry that, so the
-result copy does: every result — including "little or none" — displays a note on the contribution of chance
-and on the modest test-retest stability of this kind of activity.
+**The conventional slight / moderate / strong labels are deliberately absent.** They are effect-size
+conventions describing how large a gap is, and one sitting of a short activity cannot support a size. A
+reader on their own has nobody to tell them that a "moderate" is not a moderate anything. Naming which way
+the response times ran is the most this can carry, so it is all it says — and the D-score figure is not
+printed either, behind a disclosure or otherwise, because a bare number is a size by another route.
 
-That note sits **above** the result sentence, not below it, and is not behind a toggle. People read this page
-alone, with nobody to add context, so the caveat has to arrive before the sentence it qualifies; underneath,
-it reads as a footnote to a finding already accepted. For the same reason the D-score itself is behind a
-"more detail" disclosure rather than printed on the page — a bare figure invites more precision than the
-activity can support.
+What the page does show is the two response-time means and the gap in milliseconds. Those are descriptive
+rather than interpretive, and they are what makes the result discussable.
+
+Every result — including "about the same" — displays a note on the contribution of chance and on the modest
+test-retest stability of this kind of activity. That note sits **above** the result sentence, not below it,
+and is not behind a toggle. People read this page alone, with nobody to add context, so the caveat has to
+arrive before the sentence it qualifies; underneath, it reads as a footnote to a finding already accepted.
 
 #### Quality flags
 
-The result is flagged as limited when a round has fewer than 20 usable responses, first-response accuracy
-falls below 70%, or more than 10% of responses arrive under 300 ms. The last is the standard subject-level
-exclusion criterion; this activity flags rather than excludes, because someone who rushed still deserves to
-see what their session produced and why it is not worth much.
+The result is flagged as limited when a focal target has fewer than 20 usable responses, first-response
+accuracy falls below 70%, more than 10% of responses arrive under 300 ms, or only one of the two block pairs
+could be scored. The 10%/300 ms rule is the standard subject-level exclusion criterion; this activity flags
+rather than excludes, because someone who rushed still deserves to see what their session produced and why
+it is not worth much.
 
 #### Caveats worth keeping in view
 
-- This is not the seven-block research IAT, so what it computes is a D-score *variant*, not a textbook D.
-  The block structure differs and practice blocks are not pooled into the divisor.
-- IAT test-retest reliability at the individual level is modest — reported correlations commonly sit in the
-  0.3–0.5 range. An individual score is not stable across occasions, which is why the result copy says so.
+- Test-retest reliability for this family of measures is modest: r ≈ .50 across 58 studies, against internal
+  consistency of α ≈ .80 across 257 (Greenwald et al., 2022). Around half the variance in a single sitting
+  does not reappear on another occasion. An individual score is not stable, which is why the result copy
+  says so.
+- The BIAT's own internal consistency in the good-focal condition is α ≈ .753, and it correlates r ≈ .645
+  with a full IAT of the same construct.
+- Order effects are real and not fully removed here. The published finding is that a pairing looks
+  *stronger* when it is met first, because carryover from the previous mapping outweighs general practice.
+  This activity alternates the focal target across four blocks and averages two pairs, which dilutes the
+  effect rather than eliminating it.
+- The warm-up mirrors the first scored block's focal pair, which gives that pairing slightly more exposure
+  than the other. A coin flip decides which pairing that is.
+- Three stimuli per category is at the low end of published BIAT practice. Each word repeats more often
+  within a block, so stimulus learning sets in faster and one weak word contaminates a third of its
+  category. Accepted in exchange for every individual word being familiar.
+
+## Before facilitated use
+
+Three checks are worth running with a small pilot group:
+
+1. **Classification speed and error rates per category.** Confirm the two-word neuromajority phrases are not
+   disproportionately error-prone. Slower on its own is acceptable and expected.
+2. **Error rates on the incompetent side.** The in-/un- prefixes offer a partial visual shortcut. If sorting
+   there looks suspiciously fast, swap one item for "inept" or "careless".
+3. **Review with neurodivergent colleagues.** Representation is limited to ADHD, autism and dyslexia; the
+   language is identity-first; and the pairings appear on screen in full. All three are worth a conversation
+   before anyone meets them cold.
+
+Checks 1 and 2 need per-category timing data that this activity deliberately does not retain — nothing is
+stored or transmitted, by design. Getting that data means either a facilitated session where someone
+observes, or a temporary instrumented build that is not the one you ship. Do not add retention to the
+production build to satisfy a pilot; see [Data](#data).
 
 ## Data
 
@@ -141,9 +208,14 @@ a different proposition entirely, and the point at which the above stops being t
 
 Everything intended to be tuned lives in two files:
 
-- `src/config/activityConfig.ts` — trial counts, reaction-time exclusions, D-score bands, quality
-  thresholds, sequencing limits. These apply to every activity.
-- `src/config/activities.ts` — the activities on offer: category labels, word lists and result sentences.
+- `src/config/activityConfig.ts` — block counts and lengths, latency exclusions and the recoding window,
+  D-score bands, quality thresholds, sequencing limits. These apply to every activity.
+- `src/config/activities.ts` — the activities on offer: category labels, word lists, which attribute is
+  focal, and result sentences.
+
+Two numbers there are deliberately equal and should move together: `blocks.leadingAttributeTrials` (the
+attribute-only run each block opens with) and `leadingTrialsDropped` (what scoring discards). They describe
+the same four trials from the composition side and the scoring side.
 
 Page wording that does not vary by topic is in `src/config/content.ts`, separate from layout and logic.
 
@@ -153,20 +225,29 @@ The procedure, the block structure and the D-score are topic-independent, so a n
 `src/config/activities.ts` and nothing else. The landing page picks up new entries automatically.
 
 Categories are named by *slot* — `targetA`, `targetB`, `attributeA`, `attributeB` — rather than by subject.
-Pairing A groups `targetA` with `attributeA`; Pairing B swaps the attributes over.
+`focalAttribute` names whichever attribute slot holds the **positive** attribute; that one stays focal in
+every block while the two targets take turns beside it.
 
-Four constraints on a new word set:
+Six constraints on a new word set. The first four are enforced by `content.test.ts`; the last two are
+judgement.
 
-1. **Keep the structure 2×2.** Two contrasted targets and two contrasted attributes. Three categories, or a
-   pair that is not a clean opposition, does not make an IAT.
-2. **Every word must belong to exactly one category, obviously and immediately.** A word that plausibly fits
-   two categories inflates response times and turns the score into noise. This is the usual way a home-made
-   IAT fails.
-3. **Match the lists on word length, syllable count and familiarity.** Otherwise part of what the activity
-   measures is reading time. The existing neurodiversity lists are imperfect on this point — "ADHD" against
-   "Accomplished", and one two-word term among single words — and that is worth fixing before it is copied.
-4. **Target words must not carry the attributes' valence.** A target word that is itself flattering or
-   unflattering means the activity measures that instead.
+1. **Point `focalAttribute` at the positive attribute.** See [Good-focal](#good-focal). Getting this
+   backwards is the most expensive mistake available here, and the least visible.
+2. **Define every stimulus** in `definitions`. Nothing may be read for the first time mid-block.
+3. **Never use a category label as one of its own stimuli.** Those trials can be answered by matching the
+   word in the middle against the identical label on screen, without classifying anything. This is why the
+   neurodiversity activity labels a category `Neuromajority` and demotes "neurotypical" to a stimulus.
+4. **Keep the structure 2×2 with equal-sized lists**, at least three words per category, no word appearing
+   in two categories. A word that plausibly fits two categories inflates response times and turns the score
+   into noise — the usual way a home-made IAT fails.
+5. **Target words must not carry the attributes' valence.** A target word that is itself flattering or
+   unflattering means the activity measures that instead. "Gifted" and "high-functioning" are excluded for
+   this reason.
+6. **Prefer familiarity over matched length.** The existing lists mix single words with two-word phrases,
+   deliberately: a constant per-category speed handicap appears in both block types and largely cancels in
+   the D-score, whereas padding every item into a matched phrase adds slowness and variance to every trial,
+   which does not cancel. Read the rationale block above `NEURODIVERSITY` in `activities.ts` before
+   "fixing" this.
 
 Choosing a topic is not a data protection question — see [Data](#data) below for why. What a topic does
 carry is the experience of reading the result alone, which is what the acknowledgement, the skippable result
@@ -202,10 +283,10 @@ Keyboard shortcuts are optional: `E` or `←` for the left response, `I` or `→
 npm test
 ```
 
-Covers trial balancing and sequencing limits, pairing randomisation, left/right mapping, duplicate-stimulus
-prevention, reaction-time exclusions, median and percentage-difference calculations, accuracy, result-quality
-warnings, session clearing, restart behaviour, mouse/touch/keyboard responses, reduced motion, focus loss and
-tab switching.
+Covers block composition and sequencing limits, focal/non-focal balancing within each dimension, block-order
+counterbalancing, duplicate-stimulus prevention, latency exclusions and recoding, per-pair D calculation and
+averaging, accuracy, result-quality warnings, session clearing, restart behaviour, mouse/touch/keyboard
+responses, reduced motion, focus loss and tab switching.
 
 Responsive layouts were built mobile-first for narrow portrait, mobile landscape, tablet, laptop and large
 desktop, and should be spot-checked on real devices before facilitated use.

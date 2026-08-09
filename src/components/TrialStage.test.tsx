@@ -1,22 +1,25 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TrialStage } from './TrialStage';
-import type { DisplayAssignment, TrialFeedback } from '../hooks/useActivityEngine';
+import { CONTENT } from '../config/content';
+import type { FocalDisplay, TrialFeedback } from '../hooks/useActivityEngine';
 import type { Trial } from '../types/activity';
 
 const TRIAL: Trial = {
   id: 'trial-1',
   stimulus: 'Typical learner',
   category: 'targetB',
-  correctSide: 'right',
-  block: 'A',
+  correctSide: 'left',
+  blockNumber: 1,
+  positionInBlock: 6,
+  pairing: 'A',
+  pairIndex: 1,
 };
 
-const ASSIGNMENT: DisplayAssignment = {
-  leftCategories: ['targetA', 'attributeA'],
-  rightCategories: ['targetB', 'attributeB'],
-  leftLabels: ['Neurodivergent', 'Incompetent'],
-  rightLabels: ['Neurotypical', 'Competent'],
+const FOCAL: FocalDisplay = {
+  focalCategories: ['targetA', 'attributeB'],
+  focalLabels: ['Neurodivergent', 'Competent'],
+  focalSide: 'right',
 };
 
 function renderStage(overrides: Partial<Parameters<typeof TrialStage>[0]> = {}) {
@@ -24,11 +27,11 @@ function renderStage(overrides: Partial<Parameters<typeof TrialStage>[0]> = {}) 
   const onDismissInterruption = vi.fn();
   const props = {
     trial: TRIAL,
-    assignment: ASSIGNMENT,
+    focal: FOCAL,
     feedback: 'idle' as TrialFeedback,
-    trialNumber: 3,
-    trialTotal: 26,
-    roundLabel: 'Round 1 of 2',
+    trialNumber: 7,
+    trialTotal: 20,
+    blockLabel: 'Block 1 of 4',
     onRespond,
     prefersReducedMotion: false,
     interruptionNotice: false,
@@ -40,21 +43,32 @@ function renderStage(overrides: Partial<Parameters<typeof TrialStage>[0]> = {}) 
 }
 
 describe('TrialStage', () => {
-  it('keeps both category pairs and the counter visible', () => {
+  it('keeps the focal pair and the counter visible', () => {
     renderStage();
 
     expect(screen.getByText('Typical learner')).toBeInTheDocument();
-    expect(screen.getByText(/Round 1 of 2 · Item 3 of 26/)).toBeInTheDocument();
-    // Once as a heading, once as a response-zone label.
+    expect(screen.getByText(/Block 1 of 4 · Item 7 of 20/)).toBeInTheDocument();
+    // Once in the banner above the word, once as the response-zone label.
     expect(screen.getAllByText('Neurodivergent')).toHaveLength(2);
     expect(screen.getAllByText('Competent')).toHaveLength(2);
   });
 
-  it('gives each response zone a screen-reader label naming its categories', () => {
+  it('offers the focal pair on one side and everything else on the other', () => {
     renderStage();
 
-    expect(screen.getByRole('button', { name: 'Respond left: Neurodivergent or Incompetent' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Respond right: Neurotypical or Competent' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Respond right: Neurodivergent or Competent' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: `Respond left: ${CONTENT.round.nonFocalLabel}` }),
+    ).toBeInTheDocument();
+  });
+
+  it('follows the focal side rather than assuming it is the right', () => {
+    renderStage({ focal: { ...FOCAL, focalSide: 'left' } });
+
+    expect(screen.getByRole('button', { name: 'Respond left: Neurodivergent or Competent' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: `Respond right: ${CONTENT.round.nonFocalLabel}` }),
+    ).toBeInTheDocument();
   });
 
   it('responds to a mouse click', () => {

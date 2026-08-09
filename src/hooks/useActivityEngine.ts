@@ -1,21 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ACTIVITY_CONFIG } from '../config/activityConfig';
-import { DEFAULT_ACTIVITY_ID, findActivity, type ActivityDefinition, type CategorySlot } from '../config/activities';
-import type {
-  ActivityPhase,
-  SessionRandomisation,
-  Side,
-  SideAssignment,
-  Trial,
-  TrialBlock,
-  TrialRecord,
-} from '../types/activity';
-import {
-  createSessionRandomisation,
-  generateAttributePracticeTrials,
-  generateCombinedTrials,
-  generateTargetPracticeTrials,
-} from '../utils/generateTrials';
+import { DEFAULT_ACTIVITY_ID, findActivity, type CategorySlot } from '../config/activities';
+import type { ActivityPhase, BlockSpec, SessionRandomisation, Side, Trial, TrialRecord } from '../types/activity';
+import { createSessionRandomisation, focalCategoriesFor, generateBlockTrials, FOCAL_SIDE } from '../utils/generateTrials';
 import { calculateResult, type ActivityResult } from '../utils/calculateResult';
 import { clearSession, loadSession, saveSession, type StoredSession } from '../utils/sessionStorage';
 import { useInterruptionDetection } from './useInterruptionDetection';
@@ -23,21 +10,24 @@ import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 import { useReactionTimer } from './useReactionTimer';
 
 export type TrialFeedback = 'idle' | 'correct' | 'incorrect';
-export type TransitionStage = 'notice' | 'practice' | 'ready';
 
-export interface DisplayAssignment {
-  leftCategories: CategorySlot[];
-  rightCategories: CategorySlot[];
-  leftLabels: string[];
-  rightLabels: string[];
+/** The two categories the current block asks the participant to watch for. */
+export interface FocalDisplay {
+  focalCategories: CategorySlot[];
+  focalLabels: string[];
+  /** The side that answers "yes, one of those two". Fixed for the session. */
+  focalSide: Side;
 }
 
-const TRIAL_PHASES: ActivityPhase[] = ['practice', 'round1', 'transition', 'round2'];
+/** Phases in which trials are on screen. */
+const TRIAL_PHASES: ActivityPhase[] = ['warmUp', 'block'];
 
-/** Phases that can be safely resumed; mid-activity phases restart the activity. */
+/** Phases that cannot be resumed part-way through; these restart the activity. */
+const MID_ACTIVITY_PHASES: ActivityPhase[] = ['warmUp', 'blockIntro', 'block'];
+
 function resumePhase(stored: StoredSession | null): ActivityPhase {
   if (!stored) return 'landing';
-  if (TRIAL_PHASES.includes(stored.phase)) return 'instructions';
+  if (MID_ACTIVITY_PHASES.includes(stored.phase)) return 'instructions';
   if (stored.phase === 'completion') return 'landing';
   return stored.phase;
 }
@@ -47,50 +37,6 @@ function resumeRecords(stored: StoredSession | null): TrialRecord[] {
   const phase = resumePhase(stored);
   // Only a finished activity keeps its trials; a restarted one starts clean.
   return phase === 'resultChoice' || phase === 'result' ? stored.trialRecords : [];
-}
-
-function toDisplayAssignment(
-  activity: ActivityDefinition,
-  leftCategories: CategorySlot[],
-  rightCategories: CategorySlot[],
-): DisplayAssignment {
-  return {
-    leftCategories,
-    rightCategories,
-    leftLabels: leftCategories.map((slot) => activity.labels[slot]),
-    rightLabels: rightCategories.map((slot) => activity.labels[slot]),
-  };
-}
-
-/** The categories on screen depend on which block the current trial belongs to. */
-function assignmentForBlock(
-  activity: ActivityDefinition,
-  block: TrialBlock,
-  randomisation: SessionRandomisation,
-): DisplayAssignment {
-  switch (block) {
-    case 'practice-identity': {
-      const left = randomisation.practiceTargetLeft;
-      const right: CategorySlot = left === 'targetA' ? 'targetB' : 'targetA';
-      return toDisplayAssignment(activity, [left], [right]);
-    }
-    case 'practice-competence': {
-      const left = randomisation.practiceAttributeLeft;
-      const right: CategorySlot = left === 'attributeA' ? 'attributeB' : 'attributeA';
-      return toDisplayAssignment(activity, [left], [right]);
-    }
-    case 'practice-transition':
-      return toDisplayAssignment(
-        activity,
-        [...randomisation.round2.leftCategories],
-        [...randomisation.round2.rightCategories],
-      );
-    default: {
-      const assignment: SideAssignment =
-        block === randomisation.round1.pairing ? randomisation.round1 : randomisation.round2;
-      return toDisplayAssignment(activity, [...assignment.leftCategories], [...assignment.rightCategories]);
-    }
-  }
 }
 
 function lightHaptic(): void {
@@ -113,8 +59,9 @@ export function useActivityEngine() {
   const [queue, setQueue] = useState<Trial[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [feedback, setFeedback] = useState<TrialFeedback>('idle');
-  const [practiceComplete, setPracticeComplete] = useState(false);
-  const [transitionStage, setTransitionStage] = useState<TransitionStage>('notice');
+  /** Index into `randomisation.blocks`: 0 is the warm-up, 1 to 4 are scored. */
+  const [blockIndex, setBlockIndex] = useState(0);
+  const [warmUpComplete, setWarmUpComplete] = useState(false);
   const [sessionClearedNotice, setSessionClearedNotice] = useState(false);
 
   const attemptsRef = useRef(0);
@@ -135,10 +82,19 @@ export function useActivityEngine() {
     currentTrial !== null,
   );
 
-  const currentAssignment = useMemo(
-    () => (currentTrial ? assignmentForBlock(activity, currentTrial.block, randomisation) : null),
-    [activity, currentTrial, randomisation],
-  );
+  const currentBlock: BlockSpec | null = randomisation.blocks[blockIndex] ?? null;
+
+  // Derived from the block rather than the trial, because the between-block
+  // screen has to announce the focal pair before any trial exists.
+  const focal: FocalDisplay | null = useMemo(() => {
+    if (!currentBlock) return null;
+    const focalCategories = focalCategoriesFor(activity, currentBlock.pairing);
+    return {
+      focalCategories,
+      focalLabels: focalCategories.map((slot) => activity.labels[slot]),
+      focalSide: FOCAL_SIDE,
+    };
+  }, [activity, currentBlock]);
 
   const clearPendingAdvance = useCallback(() => {
     if (advanceTimeoutRef.current !== null) {
@@ -180,13 +136,19 @@ export function useActivityEngine() {
     setQueueIndex(0);
     setFeedback('idle');
 
-    if (phase === 'practice') setPracticeComplete(true);
-    else if (phase === 'round1') {
-      setPhase('transition');
-      setTransitionStage('notice');
-    } else if (phase === 'transition') setTransitionStage('ready');
-    else if (phase === 'round2') setPhase('resultChoice');
-  }, [clearPendingAdvance, isTrialPhase, phase, queue.length, queueIndex]);
+    if (phase === 'warmUp') {
+      setWarmUpComplete(true);
+      return;
+    }
+
+    const isFinalBlock = blockIndex >= randomisation.blocks.length - 1;
+    if (isFinalBlock) {
+      setPhase('resultChoice');
+    } else {
+      setBlockIndex((index) => index + 1);
+      setPhase('blockIntro');
+    }
+  }, [blockIndex, clearPendingAdvance, isTrialPhase, phase, queue.length, queueIndex, randomisation.blocks.length]);
 
   const respond = useCallback(
     (side: Side) => {
@@ -232,7 +194,7 @@ export function useActivityEngine() {
     const onKeyDown = (event: KeyboardEvent) => {
       // A held-down key auto-repeats. Without this the repeats carry over the
       // moment the next stimulus appears, answering it in a few milliseconds
-      // and filling the round with times too fast to mean anything.
+      // and filling the block with times too fast to mean anything.
       if (event.repeat) return;
       const key = event.key.toLowerCase();
       if (key === 'e' || event.key === 'ArrowLeft') {
@@ -267,8 +229,8 @@ export function useActivityEngine() {
       setQueue([]);
       setQueueIndex(0);
       setFeedback('idle');
-      setPracticeComplete(false);
-      setTransitionStage('notice');
+      setBlockIndex(0);
+      setWarmUpComplete(false);
       timer.clear();
       clearSession();
     },
@@ -288,55 +250,27 @@ export function useActivityEngine() {
         setPhase('information');
       },
       acknowledge: (value: boolean) => setAcknowledged(value),
-      continueFromInformation: () => setPhase('instructions'),
-      startPractice: () => {
-        setPracticeComplete(false);
-        loadQueue([
-          ...generateTargetPracticeTrials(
-            activity.stimuli,
-            ACTIVITY_CONFIG.practice.identityTrials,
-            randomisation.practiceTargetLeft,
-          ),
-          ...generateAttributePracticeTrials(
-            activity.stimuli,
-            ACTIVITY_CONFIG.practice.competenceTrials,
-            randomisation.practiceAttributeLeft,
-          ),
-        ]);
-        setPhase('practice');
+      // The definitions land between the acknowledgement and the instructions,
+      // so the category names the instructions demonstrate are already defined.
+      continueFromInformation: () => setPhase('definitions'),
+      continueFromDefinitions: () => setPhase('instructions'),
+      startWarmUp: () => {
+        setWarmUpComplete(false);
+        setBlockIndex(0);
+        loadQueue(generateBlockTrials(activity, randomisation.blocks[0]));
+        setPhase('warmUp');
       },
-      beginRounds: () => {
-        loadQueue(
-          generateCombinedTrials(
-            activity.stimuli,
-            randomisation.round1,
-            ACTIVITY_CONFIG.scoredRoundTrials,
-            randomisation.round1.pairing,
-          ),
-        );
-        setPhase('round1');
+      /** Leaves the warm-up for the first scored block's announcement. */
+      startBlocks: () => {
+        setBlockIndex(1);
+        setPhase('blockIntro');
       },
-      startTransitionPractice: () => {
-        loadQueue(
-          generateCombinedTrials(
-            activity.stimuli,
-            randomisation.round2,
-            ACTIVITY_CONFIG.transitionPracticeTrials,
-            'practice-transition',
-          ),
-        );
-        setTransitionStage('practice');
-      },
-      startFinalRound: () => {
-        loadQueue(
-          generateCombinedTrials(
-            activity.stimuli,
-            randomisation.round2,
-            ACTIVITY_CONFIG.scoredRoundTrials,
-            randomisation.round2.pairing,
-          ),
-        );
-        setPhase('round2');
+      /** Begins whichever block the announcement was for. */
+      startBlock: () => {
+        const block = randomisation.blocks[blockIndex];
+        if (!block) return;
+        loadQueue(generateBlockTrials(activity, block));
+        setPhase('block');
       },
       showResult: () => setPhase('result'),
       skipResult: () => setPhase('completion'),
@@ -359,16 +293,14 @@ export function useActivityEngine() {
       },
       dismissSessionClearedNotice: () => setSessionClearedNotice(false),
     }),
-    [activity, loadQueue, randomisation, resetActivityState],
+    [activity, blockIndex, loadQueue, randomisation, resetActivityState],
   );
 
-  const roundLabel = useMemo(() => {
-    if (!currentTrial) return '';
-    if (currentTrial.block === 'A' || currentTrial.block === 'B') {
-      return currentTrial.block === randomisation.round1.pairing ? 'Round 1 of 2' : 'Round 2 of 2';
-    }
-    return 'Practice';
-  }, [currentTrial, randomisation]);
+  const blockLabel = useMemo(() => {
+    if (!currentBlock) return '';
+    if (currentBlock.kind === 'warmUp') return 'Warm-up';
+    return `Block ${currentBlock.blockNumber} of ${ACTIVITY_CONFIG.blocks.scoredBlockCount}`;
+  }, [currentBlock]);
 
   return {
     phase,
@@ -377,13 +309,13 @@ export function useActivityEngine() {
     randomisation,
     trialRecords,
     currentTrial,
-    currentAssignment,
+    currentBlock,
+    focal,
     trialNumber: currentTrial ? queueIndex + 1 : 0,
     trialTotal: queue.length,
-    roundLabel,
+    blockLabel,
     feedback,
-    practiceComplete,
-    transitionStage,
+    warmUpComplete,
     result,
     sessionClearedNotice,
     prefersReducedMotion,

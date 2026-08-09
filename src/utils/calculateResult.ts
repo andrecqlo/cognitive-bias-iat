@@ -1,5 +1,5 @@
 import { ACTIVITY_CONFIG } from '../config/activityConfig';
-import type { Pairing, TrialRecord } from '../types/activity';
+import type { Pairing, PairIndex, Trial, TrialRecord } from '../types/activity';
 
 export function mean(values: number[]): number | null {
   if (values.length === 0) return null;
@@ -15,90 +15,112 @@ export function standardDeviation(values: number[]): number | null {
 }
 
 /**
+ * Whether a trial sits past the opening run its block discards.
+ *
+ * Positional rather than latency-based, and applied per block rather than per
+ * session: every block opens with the same attribute-only run while the
+ * participant settles into a new focal pair, and every block loses it.
+ */
+export function isScoredPosition(trial: Trial): boolean {
+  return trial.positionInBlock >= ACTIVITY_CONFIG.leadingTrialsDropped;
+}
+
+/**
  * Trials that count towards the D-score.
  *
- * Note what is *not* excluded: trials whose first response was wrong. The
+ * Note what is *not* excluded. Trials whose first response was wrong stay: the
  * activity makes participants correct an error before advancing, so the cost of
- * that error is already inside the recorded time. Dropping those trials would
- * remove exactly the trials where the pairing was hardest, which is the signal
- * rather than the noise.
+ * that error is already inside the recorded time, and dropping those trials
+ * would remove exactly the trials where the focal pair was hardest — the signal
+ * rather than the noise. Very fast responses stay too, and are pulled up to the
+ * bottom of the scoring window instead; see `winsorise`.
  */
 export function isUsableTrial(trial: TrialRecord): boolean {
-  const { minValidMs, maxValidMs } = ACTIVITY_CONFIG.timing;
-  return !trial.interrupted && trial.reactionTimeMs >= minValidMs && trial.reactionTimeMs <= maxValidMs;
+  return !trial.interrupted && trial.reactionTimeMs <= ACTIVITY_CONFIG.timing.maxValidMs;
 }
 
-export interface RoundSummary {
+/**
+ * Pulls a latency into the scoring window rather than discarding it.
+ *
+ * The recommended treatment for this procedure. A response under the floor is
+ * usually anticipation and one over the ceiling usually inattention, but in
+ * both cases the participant was still on that trial — recoding keeps the trial
+ * in the count and removes only its leverage over the mean.
+ */
+export function winsorise(reactionTimeMs: number): number {
+  const { winsorMinMs, winsorMaxMs } = ACTIVITY_CONFIG.timing;
+  return Math.min(Math.max(reactionTimeMs, winsorMinMs), winsorMaxMs);
+}
+
+export interface TargetSummary {
   pairing: Pairing;
+  /** Every non-interrupted trial in the two blocks with this target focal. */
   totalTrials: number;
-  /** Trials left once the opening warm-up is set aside. */
+  /** Trials left once each block's opening run is set aside. */
   scoredTrials: number;
   usableTrials: number;
+  /** Mean of the latencies that were scored, after recoding. */
   meanReactionTimeMs: number | null;
   accuracy: number | null;
-  /** Reaction times so fast they suggest guessing rather than categorising. */
+  /** Responses too fast to be reactions to the word, before recoding. */
   tooFastTrials: number;
-  /** Reaction times of the usable trials, for the pooled standard deviation. */
-  reactionTimes: number[];
 }
 
-export function summariseRound(trials: TrialRecord[], pairing: Pairing): RoundSummary {
+/** The two blocks in which `pairing` was the focal target. */
+function blocksFor(trials: TrialRecord[], pairing: Pairing): TrialRecord[] {
+  return trials.filter((trial) => trial.pairing === pairing);
+}
+
+/** Scored, usable latencies for one target in one block pair, after recoding. */
+function latenciesFor(trials: TrialRecord[], pairing: Pairing, pairIndex: PairIndex): number[] {
+  return blocksFor(trials, pairing)
+    .filter((trial) => trial.pairIndex === pairIndex && isScoredPosition(trial) && isUsableTrial(trial))
+    .map((trial) => winsorise(trial.reactionTimeMs));
+}
+
+export function summariseTarget(trials: TrialRecord[], pairing: Pairing): TargetSummary {
   const { minValidMs } = ACTIVITY_CONFIG.timing;
-  // In presentation order, because the warm-up window is the round's opening
-  // trials as the participant met them.
-  const presented = trials.filter((trial) => trial.block === pairing);
+
+  const presented = blocksFor(trials, pairing);
   const attempted = presented.filter((trial) => !trial.interrupted);
-  // Accuracy covers the whole round, including the opening trials, because
-  // struggling to learn the pairing is exactly what it should capture.
+  // Accuracy covers the whole block, opening trials included, because
+  // struggling to settle into a focal pair is exactly what it should capture.
   const correct = attempted.filter((trial) => trial.firstResponseCorrect);
-  // The D-score does not, so both rounds are scored from an equally warm start.
-  // Dropped by position rather than after interrupted trials are removed: doing
-  // it the other way round makes the window swallow real trials whenever
-  // something interrupted the opening ones, and by a different amount in each
-  // round, which is exactly the asymmetry this is here to remove.
-  const scored = presented
-    .slice(ACTIVITY_CONFIG.warmUpTrialsDropped)
-    .filter((trial) => !trial.interrupted);
+
+  const scored = presented.filter((trial) => isScoredPosition(trial) && !trial.interrupted);
   const usable = scored.filter(isUsableTrial);
-  const reactionTimes = usable.map((trial) => trial.reactionTimeMs);
 
   return {
     pairing,
     totalTrials: attempted.length,
     scoredTrials: scored.length,
     usableTrials: usable.length,
-    meanReactionTimeMs: mean(reactionTimes),
+    meanReactionTimeMs: mean(usable.map((trial) => winsorise(trial.reactionTimeMs))),
     accuracy: attempted.length > 0 ? correct.length / attempted.length : null,
+    // Counted before recoding, which would otherwise erase the evidence.
     tooFastTrials: scored.filter((trial) => trial.reactionTimeMs < minValidMs).length,
-    reactionTimes,
   };
 }
 
 /**
- * Which pairing was the quicker round, named by slot rather than by subject so
- * the same scoring runs every activity. `fasterWithAttributeA` means targetA
- * shared a response side with attributeA in the quicker round.
+ * Which target was quicker beside the focal attribute. Named by slot rather
+ * than by subject so the same scoring runs every activity.
  */
-export type ResultDirection = 'fasterWithAttributeA' | 'fasterWithAttributeB' | 'similar';
-
-/**
- * Conventional D-score bands. These describe how large the effect is, not how
- * confident we are that it is real — the result copy has to carry that part.
- */
-export type ResultStrength = 'slight' | 'moderate' | 'strong';
+export type ResultDirection = 'fasterWithTargetA' | 'fasterWithTargetB' | 'similar';
 
 export type ResultQuality = 'reliable' | 'limited';
 
 export interface ActivityResult {
-  pairingA: RoundSummary;
-  pairingB: RoundSummary;
+  /** The two blocks in which targetA shared the focal pair. */
+  targetA: TargetSummary;
+  targetB: TargetSummary;
   /**
-   * Signed D-score: negative means Pairing A (targetA grouped with attributeA)
-   * was the faster of the two, positive means Pairing B was.
+   * Signed D-score: negative means the targetA blocks were the quicker ones,
+   * positive means the targetB blocks were.
    */
   dScore: number | null;
-  /** Null when the score sits inside the "little or none" band. */
-  strength: ResultStrength | null;
+  /** The D for each block pair, before averaging. Null where a pair is unusable. */
+  pairScores: (number | null)[];
   /** Plain-English gap between the two means, for readers who want milliseconds. */
   differenceMs: number | null;
   direction: ResultDirection;
@@ -106,61 +128,89 @@ export interface ActivityResult {
   qualityReasons: string[];
 }
 
-function strengthFor(magnitude: number): ResultStrength | null {
-  const { slight, moderate, strong } = ACTIVITY_CONFIG.result.dScoreBands;
-  if (magnitude >= strong) return 'strong';
-  if (magnitude >= moderate) return 'moderate';
-  if (magnitude >= slight) return 'slight';
-  return null;
+/**
+ * Whether the gap is wide enough to name a direction for. Below the threshold
+ * the two halves are reported as about the same; above it, one of them is named
+ * as quicker — and nothing more is said about the size either way.
+ */
+function namesADirection(magnitude: number): boolean {
+  return magnitude >= ACTIVITY_CONFIG.result.directionThresholdD;
+}
+
+/**
+ * D for one pair of consecutive blocks.
+ *
+ * The divisor is the spread of this participant's own responses across both
+ * blocks of the pair. That is what makes the score comparable between a fast,
+ * consistent responder and a slow, erratic one, and it is why no assumed spread
+ * appears anywhere in this file.
+ */
+function dForPair(trials: TrialRecord[], pairIndex: PairIndex): number | null {
+  const a = latenciesFor(trials, 'A', pairIndex);
+  const b = latenciesFor(trials, 'B', pairIndex);
+  if (a.length === 0 || b.length === 0) return null;
+
+  const pooledSd = standardDeviation([...a, ...b]);
+  if (pooledSd === null) return null;
+  if (pooledSd === 0) return 0;
+
+  return ((mean(a) as number) - (mean(b) as number)) / pooledSd;
 }
 
 export function calculateResult(trials: TrialRecord[]): ActivityResult {
-  const pairingA = summariseRound(trials, 'A');
-  const pairingB = summariseRound(trials, 'B');
+  const targetA = summariseTarget(trials, 'A');
+  const targetB = summariseTarget(trials, 'B');
+
+  // One D per block pair, then the average of the two. Scoring each pair
+  // against its own spread and averaging afterwards is the recommended
+  // procedure: the second pair is a replication of the first, not more of the
+  // same data, so it gets equal weight rather than more trials' worth.
+  const pairScores: (number | null)[] = ([1, 2] as PairIndex[]).map((pairIndex) => dForPair(trials, pairIndex));
+  const usablePairScores = pairScores.filter((score): score is number => score !== null);
 
   let dScore: number | null = null;
   let differenceMs: number | null = null;
-  let strength: ResultStrength | null = null;
   let direction: ResultDirection = 'similar';
 
-  // The divisor is the spread of this participant's own responses across both
-  // rounds. That is what makes the score comparable between a fast, consistent
-  // responder and a slow, erratic one, and it is why no assumed spread appears
-  // anywhere in this file.
-  const pooledSd = standardDeviation([...pairingA.reactionTimes, ...pairingB.reactionTimes]);
-
-  if (pairingA.meanReactionTimeMs !== null && pairingB.meanReactionTimeMs !== null && pooledSd !== null) {
-    differenceMs = Math.round(Math.abs(pairingA.meanReactionTimeMs - pairingB.meanReactionTimeMs));
-    dScore = pooledSd === 0 ? 0 : (pairingA.meanReactionTimeMs - pairingB.meanReactionTimeMs) / pooledSd;
-    strength = strengthFor(Math.abs(dScore));
-
-    if (strength !== null) {
-      direction = dScore < 0 ? 'fasterWithAttributeA' : 'fasterWithAttributeB';
+  if (usablePairScores.length > 0) {
+    dScore = mean(usablePairScores) as number;
+    if (namesADirection(Math.abs(dScore))) {
+      direction = dScore < 0 ? 'fasterWithTargetA' : 'fasterWithTargetB';
     }
   }
 
-  const qualityReasons: string[] = [];
-  const { minUsableTrialsPerRound, minAccuracy, maxTooFastRate } = ACTIVITY_CONFIG.timing;
-
-  if (pairingA.usableTrials < minUsableTrialsPerRound || pairingB.usableTrials < minUsableTrialsPerRound) {
-    qualityReasons.push('Fewer usable responses than expected in one or both rounds.');
+  if (targetA.meanReactionTimeMs !== null && targetB.meanReactionTimeMs !== null) {
+    differenceMs = Math.round(Math.abs(targetA.meanReactionTimeMs - targetB.meanReactionTimeMs));
   }
-  if ((pairingA.accuracy ?? 1) < minAccuracy || (pairingB.accuracy ?? 1) < minAccuracy) {
-    qualityReasons.push('More wrong turns than expected in one or both rounds.');
+
+  const qualityReasons: string[] = [];
+  const { minUsableTrialsPerTarget, minAccuracy, maxTooFastRate } = ACTIVITY_CONFIG.timing;
+
+  if (targetA.usableTrials < minUsableTrialsPerTarget || targetB.usableTrials < minUsableTrialsPerTarget) {
+    qualityReasons.push('Fewer usable responses than expected in one or both halves of the activity.');
+  }
+  if ((targetA.accuracy ?? 1) < minAccuracy || (targetB.accuracy ?? 1) < minAccuracy) {
+    qualityReasons.push('More wrong turns than expected in one or both halves of the activity.');
   }
   // The standard subject-level exclusion: a participant answering this fast is
-  // responding before they can have read the word.
-  const tooFast = pairingA.tooFastTrials + pairingB.tooFastTrials;
-  const scored = pairingA.scoredTrials + pairingB.scoredTrials;
+  // responding before they can have read the word. Flagged rather than
+  // excluded, because a rushed session still deserves to be seen.
+  const tooFast = targetA.tooFastTrials + targetB.tooFastTrials;
+  const scored = targetA.scoredTrials + targetB.scoredTrials;
   if (scored > 0 && tooFast / scored > maxTooFastRate) {
     qualityReasons.push('Many responses were too fast to be reactions to the word on screen.');
   }
+  // Only one of the two pairs produced a score, so the replication that makes
+  // this a two-pair measure did not happen.
+  if (usablePairScores.length === 1) {
+    qualityReasons.push('Only one half of the activity could be scored.');
+  }
 
   return {
-    pairingA,
-    pairingB,
+    targetA,
+    targetB,
     dScore,
-    strength,
+    pairScores,
     differenceMs,
     direction,
     quality: qualityReasons.length > 0 ? 'limited' : 'reliable',

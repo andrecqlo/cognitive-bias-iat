@@ -7,20 +7,25 @@
  *
  * The structure has to stay 2x2: two contrasted targets and two contrasted
  * attributes. Three categories, or a pair that is not a clean opposition, does
- * not make an IAT.
+ * not make an implicit association measure.
  *
  * Word lists carry more weight than they look like they do:
  *
  * - Every word must belong to exactly one category, obviously and immediately.
  *   A word that plausibly fits two categories inflates response times and turns
  *   the score into noise. This is the usual way a home-made IAT fails.
- * - Match the lists on word length, syllable count and familiarity as closely
- *   as the subject allows. Otherwise part of what the activity measures is
- *   reading time. The neurodiversity lists below are imperfect on exactly this
- *   point — "ADHD" against "Accomplished", and one two-word term among
- *   single words — which is worth fixing before it is copied into a new topic.
+ * - Every word must be defined on the definitions screen before the activity
+ *   starts. A word met for the first time mid-block is a reading-speed
+ *   measurement, not an association one.
  * - Target words must not carry the attributes' valence. If a target word is
  *   itself flattering or unflattering, the activity measures that instead.
+ *   "Gifted" and "high-functioning" are excluded from the lists below for this
+ *   reason: the first imports a positive stereotype into a category that has to
+ *   stay valence-neutral, and the second is a framing now widely considered
+ *   harmful.
+ * - A category label must never also appear as one of its own stimuli. That
+ *   produces trials a participant can answer by matching the word in the middle
+ *   against the identical label on screen, without classifying anything.
  *
  * Choosing a topic is not a data protection question. The activity asks the
  * participant nothing about themselves, scores nothing but how quickly they
@@ -33,16 +38,27 @@
  */
 
 /**
- * The four category slots, in the arrangement the activity pairs them.
+ * The four category slots.
  *
- * Pairing A groups targetA with attributeA; Pairing B swaps the attributes.
- * Naming them by slot rather than by subject is what keeps the trial generator,
- * the engine and the scoring free of any one topic.
+ * In a Brief IAT one attribute stays focal for the whole session while the
+ * targets take turns beside it, so the slots are not paired up in advance the
+ * way they are in a seven-block IAT. Naming them by slot rather than by subject
+ * is what keeps the trial generator, the engine and the scoring free of any one
+ * topic.
  */
 export type CategorySlot = 'targetA' | 'targetB' | 'attributeA' | 'attributeB';
 
+export type TargetSlot = Extract<CategorySlot, 'targetA' | 'targetB'>;
+export type AttributeSlot = Extract<CategorySlot, 'attributeA' | 'attributeB'>;
+
 export const TARGET_SLOTS = ['targetA', 'targetB'] as const;
 export const ATTRIBUTE_SLOTS = ['attributeA', 'attributeB'] as const;
+
+/** One term explained on the definitions screen before any trial runs. */
+export interface CategoryDefinition {
+  term: string;
+  definition: string;
+}
 
 export interface ActivityDefinition {
   id: string;
@@ -51,45 +67,125 @@ export interface ActivityDefinition {
   summary: string;
   labels: Record<CategorySlot, string>;
   stimuli: Record<CategorySlot, string[]>;
-  /** Names for the two pairings, used on the result page. */
-  pairingLabels: { a: string; b: string };
   /**
-   * Result sentences. `fasterWithAttributeA` is used when Pairing A was the
-   * quicker round — that is, when targetA shared a side with attributeA.
+   * Shown before the activity starts. Between them these must cover **every**
+   * word in `stimuli`, so nothing is read for the first time mid-block.
+   */
+  definitions: CategoryDefinition[];
+  /**
+   * The attribute that stays focal in every block. **This must be the
+   * positively-valenced one.**
+   *
+   * The choice is not cosmetic. Blocks that hold the positive attribute focal
+   * ("good-focal") and blocks that hold the negative one focal are structurally
+   * identical, and good-focal blocks carry roughly three times the shared
+   * variance of bad-focal ones (Nosek, Bar-Anan, Sriram & Greenwald, 2014).
+   * Pointing this at the unflattering attribute would throw away most of the
+   * measure while looking like it still worked.
+   */
+  focalAttribute: AttributeSlot;
+  /** Names for the two focal pairs, used on the result page. */
+  blockLabels: { targetAFocal: string; targetBFocal: string };
+  /**
+   * Result sentences. `fasterWithTargetA` is used when the blocks with targetA
+   * focal were the quicker ones.
+   *
+   * No sentence carries a size. The activity reports which way response times
+   * ran and stops there.
    */
   result: {
-    fasterWithAttributeA: string;
-    fasterWithAttributeB: string;
+    fasterWithTargetA: string;
+    fasterWithTargetB: string;
     similar: string;
   };
 }
 
+/**
+ * ## Why these particular words
+ *
+ * **Three stimuli per category.** At the low end of published BIAT practice but
+ * within it. Each word therefore repeats more often within a block, so stimulus
+ * learning sets in faster and one weak word contaminates a third of its
+ * category. Accepted deliberately: familiarity of every individual word was
+ * prioritised over set size, and this tool exists to start a conversation
+ * rather than to measure anyone.
+ *
+ * **Person-adjectives on the neurodivergent side.** "autistic" and "dyslexic"
+ * rather than "autism" and "dyslexia", so the pairing on screen reads as being
+ * about people ("autistic + competent") rather than as rating a condition.
+ * "ADHD" stays a noun because English has no standard adjective form; it works
+ * adjectivally in everyday speech, so this is a cosmetic inconsistency rather
+ * than a functional one.
+ *
+ * **Mixed word lengths across the two target categories.** Single words on one
+ * side, two-word phrases on the other. Left alone on purpose: a constant
+ * per-category speed handicap appears in both block types and largely cancels
+ * in the D-score. Padding both sides into matched phrases ("autistic mind",
+ * "dyslexic learner") would add uniform slowness and response-time variance to
+ * every trial, and that does not cancel — it degrades a short activity's
+ * reliability. Do not "fix" this.
+ *
+ * **"Neuromajority" as a label rather than a stimulus.** The term is uncommon,
+ * and an unfamiliar stimulus classifies slowly with a steep within-session
+ * learning curve, which injects order-dependent noise. As a label that stays on
+ * screen and is defined before the activity starts, its rarity costs nothing —
+ * and it frames the majority as one group among others rather than as the
+ * default. "neurotypical" is demoted to a stimulus for the same reason a label
+ * never appears in its own word list.
+ *
+ * **Morphologically paired attributes.** Each incompetent word directly negates
+ * a competent one — capable/incapable, skilled/unskilled, effective/ineffective
+ * — which matches them on length, frequency and semantic scope. The known
+ * residual risk is that the in-/un- prefix offers a partial visual shortcut to
+ * the incompetent category. Retained because the pairing benefit outweighs the
+ * theoretical shortcut; if piloting shows suspiciously fast sorting on the
+ * incompetent side, swap one item for "inept" or "careless".
+ */
 const NEURODIVERSITY: ActivityDefinition = {
   id: 'neurodiversity',
   title: 'Neurodiversity and competence',
-  summary: 'Do “Neurodivergent” and “Competent” feel as connected to you as “Neurotypical” and “Competent”?',
+  summary: 'Do “Neurodivergent” and “Competent” feel as connected to you as “Neuromajority” and “Competent”?',
   labels: {
     targetA: 'Neurodivergent',
-    targetB: 'Neurotypical',
-    attributeA: 'Incompetent',
-    attributeB: 'Competent',
+    targetB: 'Neuromajority',
+    attributeA: 'Competent',
+    attributeB: 'Incompetent',
   },
   stimuli: {
-    targetA: ['Neurodivergent', 'Autistic', 'ADHD', 'Dyslexic'],
-    targetB: ['Neurotypical', 'Typical mind', 'Typical thinker', 'Typical learner'],
-    attributeA: ['Ineffective', 'Inept', 'Unreliable', 'Inadequate'],
-    attributeB: ['Effective', 'Proficient', 'Reliable', 'Accomplished'],
+    targetA: ['ADHD', 'autistic', 'dyslexic'],
+    targetB: ['neurotypical', 'conventional learner', 'typical mind'],
+    attributeA: ['capable', 'skilled', 'effective'],
+    attributeB: ['incapable', 'unskilled', 'ineffective'],
   },
-  pairingLabels: {
-    a: 'Neurodivergent + Incompetent',
-    b: 'Neurodivergent + Competent',
+  definitions: [
+    {
+      term: 'Neurodivergent',
+      definition:
+        'People whose brains work differently from the majority. In this activity that means people with ADHD, autistic people and dyslexic people.',
+    },
+    {
+      term: 'Neuromajority',
+      definition:
+        'People whose ways of thinking and learning are shared by most of the population — also called neurotypical, a conventional learner or a typical mind.',
+    },
+    {
+      term: 'Competent and Incompetent',
+      definition:
+        'The words you will sort are everyday synonyms: capable, skilled and effective on one side; incapable, unskilled and ineffective on the other.',
+    },
+  ],
+  /** "Competent" — the positive attribute, as good-focal requires. */
+  focalAttribute: 'attributeA',
+  blockLabels: {
+    targetAFocal: 'Neurodivergent + Competent',
+    targetBFocal: 'Neuromajority + Competent',
   },
   result: {
-    fasterWithAttributeA:
-      'You were {strength} faster when “Neurodivergent” shared a response side with “Incompetent” than when it shared a side with “Competent.”',
-    fasterWithAttributeB:
-      'You were {strength} faster when “Neurodivergent” shared a response side with “Competent” than when it shared a side with “Incompetent.”',
-    similar: 'You responded at about the same speed whichever way the categories were paired.',
+    fasterWithTargetA:
+      'You were faster when “Neurodivergent” and “Competent” were the two categories to watch for than when “Neuromajority” and “Competent” were.',
+    fasterWithTargetB:
+      'You were faster when “Neuromajority” and “Competent” were the two categories to watch for than when “Neurodivergent” and “Competent” were.',
+    similar: 'You responded at about the same speed whichever pair of categories you were watching for.',
   },
 };
 
@@ -99,4 +195,19 @@ export const DEFAULT_ACTIVITY_ID = NEURODIVERSITY.id;
 
 export function findActivity(id: string | null | undefined): ActivityDefinition {
   return ACTIVITIES.find((activity) => activity.id === id) ?? NEURODIVERSITY;
+}
+
+/** The attribute that is never focal — the contrast for the focal one. */
+export function nonFocalAttribute(activity: Pick<ActivityDefinition, 'focalAttribute'>): AttributeSlot {
+  return activity.focalAttribute === 'attributeA' ? 'attributeB' : 'attributeA';
+}
+
+/** Which target is focal for a given pairing. */
+export function targetForPairing(pairing: 'A' | 'B'): TargetSlot {
+  return pairing === 'A' ? 'targetA' : 'targetB';
+}
+
+/** The target that is *not* focal for a given pairing. */
+export function otherTargetForPairing(pairing: 'A' | 'B'): TargetSlot {
+  return pairing === 'A' ? 'targetB' : 'targetA';
 }

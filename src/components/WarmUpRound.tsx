@@ -4,16 +4,17 @@ import { TrialStage } from './TrialStage';
 import { Button } from './ui/Button';
 import { Card, PageShell } from './ui/PageShell';
 
-export function PracticeRound({ engine }: { engine: ActivityEngine }) {
-  if (engine.currentTrial && engine.currentAssignment) {
+/** The unscored warm-up: the mechanic and the word lists, before anything counts. */
+export function WarmUpRound({ engine }: { engine: ActivityEngine }) {
+  if (engine.currentTrial && engine.focal) {
     return (
       <TrialStage
         trial={engine.currentTrial}
-        assignment={engine.currentAssignment}
+        focal={engine.focal}
         feedback={engine.feedback}
         trialNumber={engine.trialNumber}
         trialTotal={engine.trialTotal}
-        roundLabel={engine.roundLabel}
+        blockLabel={engine.blockLabel}
         onRespond={engine.respond}
         prefersReducedMotion={engine.prefersReducedMotion}
         interruptionNotice={false}
@@ -26,13 +27,11 @@ export function PracticeRound({ engine }: { engine: ActivityEngine }) {
     <PageShell>
       <Card>
         <h1 className="text-[clamp(1.5rem,6vw,2.25rem)] leading-tight font-semibold text-ink">
-          {CONTENT.practice.readyHeading}
+          {CONTENT.warmUp.readyHeading}
         </h1>
-        <p className="mt-4 leading-relaxed text-muted">
-          From here the two pairs of categories share the same response sides. Respond as quickly as you comfortably can.
-        </p>
-        <Button className="mt-7 w-full" onClick={engine.actions.beginRounds}>
-          {CONTENT.practice.beginButton}
+        <p className="mt-4 leading-relaxed text-muted">{CONTENT.warmUp.readyBody}</p>
+        <Button className="mt-7 w-full" onClick={engine.actions.startBlocks}>
+          {CONTENT.warmUp.beginButton}
         </Button>
       </Card>
     </PageShell>

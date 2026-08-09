@@ -1,19 +1,19 @@
 import type { ActivityEngine } from '../hooks/useActivityEngine';
 import { TrialStage } from './TrialStage';
 
-/** One scored combined round. Both scored rounds use the same component; the
- * categories on each side come from the session's randomisation. */
-export function AssociationRound({ engine }: { engine: ActivityEngine }) {
-  if (!engine.currentTrial || !engine.currentAssignment) return null;
+/** One scored block. All four use this component; the focal pair comes from the
+ * session's block plan. */
+export function ScoredBlock({ engine }: { engine: ActivityEngine }) {
+  if (!engine.currentTrial || !engine.focal) return null;
 
   return (
     <TrialStage
       trial={engine.currentTrial}
-      assignment={engine.currentAssignment}
+      focal={engine.focal}
       feedback={engine.feedback}
       trialNumber={engine.trialNumber}
       trialTotal={engine.trialTotal}
-      roundLabel={engine.roundLabel}
+      blockLabel={engine.blockLabel}
       onRespond={engine.respond}
       prefersReducedMotion={engine.prefersReducedMotion}
       interruptionNotice={engine.majorInterruption}

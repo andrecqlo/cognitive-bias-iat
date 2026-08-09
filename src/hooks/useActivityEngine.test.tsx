@@ -2,9 +2,13 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ACTIVITY_CONFIG } from '../config/activityConfig';
 import { STORAGE_KEY } from '../utils/sessionStorage';
+import { FOCAL_SIDE } from '../utils/generateTrials';
 import { useActivityEngine, type ActivityEngine } from './useActivityEngine';
 
 type Engine = { current: ActivityEngine };
+
+const { warmUpTrials, scoredBlockTrials, scoredBlockCount, leadingAttributeTrials } = ACTIVITY_CONFIG.blocks;
+const SCORED_PER_BLOCK = scoredBlockTrials - ACTIVITY_CONFIG.leadingTrialsDropped;
 
 /** Answers the current trial correctly, leaving a realistic reaction time. */
 function answerCurrentTrial(engine: Engine, { correct = true, dwellMs = 600 } = {}) {
@@ -32,18 +36,27 @@ function answerRemainingTrials(engine: Engine) {
   }
 }
 
-function completeWholeActivity(engine: Engine) {
+function reachWarmUp(engine: Engine) {
   act(() => engine.current.actions.startActivity());
   act(() => engine.current.actions.acknowledge(true));
   act(() => engine.current.actions.continueFromInformation());
-  act(() => engine.current.actions.startPractice());
+  act(() => engine.current.actions.continueFromDefinitions());
+  act(() => engine.current.actions.startWarmUp());
+}
+
+/** Runs every scored block, taking each between-block announcement in turn. */
+function completeScoredBlocks(engine: Engine) {
+  act(() => engine.current.actions.startBlocks());
+  for (let block = 0; block < scoredBlockCount; block += 1) {
+    act(() => engine.current.actions.startBlock());
+    answerRemainingTrials(engine);
+  }
+}
+
+function completeWholeActivity(engine: Engine) {
+  reachWarmUp(engine);
   answerRemainingTrials(engine);
-  act(() => engine.current.actions.beginRounds());
-  answerRemainingTrials(engine);
-  act(() => engine.current.actions.startTransitionPractice());
-  answerRemainingTrials(engine);
-  act(() => engine.current.actions.startFinalRound());
-  answerRemainingTrials(engine);
+  completeScoredBlocks(engine);
 }
 
 describe('useActivityEngine', () => {
@@ -71,24 +84,28 @@ describe('useActivityEngine', () => {
     act(() => engine.current.actions.acknowledge(true));
     expect(engine.current.acknowledged).toBe(true);
 
+    // The definitions land before the instructions, so the category names the
+    // demonstration uses have already been explained.
     act(() => engine.current.actions.continueFromInformation());
+    expect(engine.current.phase).toBe('definitions');
+
+    act(() => engine.current.actions.continueFromDefinitions());
     expect(engine.current.phase).toBe('instructions');
   });
 
-  it('loads both practice blocks with the configured number of trials', () => {
+  it('loads the warm-up with the configured number of trials', () => {
     const engine = renderHook(() => useActivityEngine()).result;
-    act(() => engine.current.actions.startPractice());
+    act(() => engine.current.actions.startWarmUp());
 
-    expect(engine.current.phase).toBe('practice');
-    expect(engine.current.trialTotal).toBe(
-      ACTIVITY_CONFIG.practice.identityTrials + ACTIVITY_CONFIG.practice.competenceTrials,
-    );
-    expect(engine.current.currentTrial?.block).toBe('practice-identity');
+    expect(engine.current.phase).toBe('warmUp');
+    expect(engine.current.trialTotal).toBe(warmUpTrials);
+    expect(engine.current.currentTrial?.blockNumber).toBe(0);
+    expect(engine.current.currentTrial?.pairing).toBeNull();
   });
 
   it('requires an incorrect response to be corrected before advancing', () => {
     const engine = renderHook(() => useActivityEngine()).result;
-    act(() => engine.current.actions.startPractice());
+    act(() => engine.current.actions.startWarmUp());
 
     const firstTrial = engine.current.currentTrial;
     answerCurrentTrial(engine, { correct: false });
@@ -104,7 +121,7 @@ describe('useActivityEngine', () => {
 
   it('records a correct first response and advances', () => {
     const engine = renderHook(() => useActivityEngine()).result;
-    act(() => engine.current.actions.startPractice());
+    act(() => engine.current.actions.startWarmUp());
 
     answerCurrentTrial(engine, { dwellMs: 700 });
 
@@ -115,7 +132,7 @@ describe('useActivityEngine', () => {
 
   it('ignores a duplicated response for the same trial', () => {
     const engine = renderHook(() => useActivityEngine()).result;
-    act(() => engine.current.actions.startPractice());
+    act(() => engine.current.actions.startWarmUp());
 
     const trial = engine.current.currentTrial;
     if (!trial) throw new Error('No trial');
@@ -131,81 +148,106 @@ describe('useActivityEngine', () => {
     expect(engine.current.trialRecords).toHaveLength(1);
   });
 
-  it('shows the ready screen after practice, then starts the first scored round', () => {
+  it('shows the ready screen after the warm-up, then announces the first block', () => {
     const engine = renderHook(() => useActivityEngine()).result;
-    act(() => engine.current.actions.startPractice());
+    act(() => engine.current.actions.startWarmUp());
     answerRemainingTrials(engine);
 
-    expect(engine.current.practiceComplete).toBe(true);
+    expect(engine.current.warmUpComplete).toBe(true);
     expect(engine.current.currentTrial).toBeNull();
 
-    act(() => engine.current.actions.beginRounds());
-    expect(engine.current.phase).toBe('round1');
-    expect(engine.current.trialTotal).toBe(ACTIVITY_CONFIG.scoredRoundTrials);
+    act(() => engine.current.actions.startBlocks());
+    expect(engine.current.phase).toBe('blockIntro');
+    expect(engine.current.currentBlock?.blockNumber).toBe(1);
+
+    act(() => engine.current.actions.startBlock());
+    expect(engine.current.phase).toBe('block');
+    expect(engine.current.trialTotal).toBe(scoredBlockTrials);
   });
 
-  it('pauses at the transition and waits for the participant to start the final round', () => {
+  it('announces every block before it starts, and stops after the last one', () => {
     const engine = renderHook(() => useActivityEngine()).result;
-    act(() => engine.current.actions.beginRounds());
-    answerRemainingTrials(engine);
+    act(() => engine.current.actions.startBlocks());
 
-    expect(engine.current.phase).toBe('transition');
-    expect(engine.current.transitionStage).toBe('notice');
+    for (let block = 1; block <= scoredBlockCount; block += 1) {
+      expect(engine.current.phase).toBe('blockIntro');
+      expect(engine.current.currentBlock?.blockNumber).toBe(block);
 
-    act(() => engine.current.actions.startTransitionPractice());
-    expect(engine.current.transitionStage).toBe('practice');
-    expect(engine.current.trialTotal).toBe(ACTIVITY_CONFIG.transitionPracticeTrials);
-
-    answerRemainingTrials(engine);
-    expect(engine.current.transitionStage).toBe('ready');
-    expect(engine.current.phase).toBe('transition');
-
-    act(() => engine.current.actions.startFinalRound());
-    expect(engine.current.phase).toBe('round2');
-  });
-
-  it('uses the two pairings across the two scored rounds and offers the result choice at the end', () => {
-    const engine = renderHook(() => useActivityEngine()).result;
-    completeWholeActivity(engine);
+      act(() => engine.current.actions.startBlock());
+      expect(engine.current.phase).toBe('block');
+      answerRemainingTrials(engine);
+    }
 
     expect(engine.current.phase).toBe('resultChoice');
-
-    const scoredBlocks = engine.current.trialRecords
-      .filter((record) => record.block === 'A' || record.block === 'B')
-      .map((record) => record.block);
-    expect(new Set(scoredBlocks)).toEqual(new Set(['A', 'B']));
-    expect(scoredBlocks.filter((block) => block === 'A')).toHaveLength(ACTIVITY_CONFIG.scoredRoundTrials);
-    expect(scoredBlocks.filter((block) => block === 'B')).toHaveLength(ACTIVITY_CONFIG.scoredRoundTrials);
   });
 
-  it('excludes practice trials from the scored result', () => {
+  it('alternates the focal target and pairs the blocks two by two', () => {
     const engine = renderHook(() => useActivityEngine()).result;
     completeWholeActivity(engine);
 
-    const { pairingA, pairingB } = engine.current.result;
-    expect(pairingA.totalTrials).toBe(ACTIVITY_CONFIG.scoredRoundTrials);
-    expect(pairingB.totalTrials).toBe(ACTIVITY_CONFIG.scoredRoundTrials);
+    const scored = engine.current.trialRecords.filter((record) => record.pairing !== null);
+    expect(scored).toHaveLength(scoredBlockTrials * scoredBlockCount);
+
+    (['A', 'B'] as const).forEach((pairing) => {
+      const forTarget = scored.filter((record) => record.pairing === pairing);
+      expect(forTarget).toHaveLength(scoredBlockTrials * 2);
+      // One block in each half, so each half can be scored on its own.
+      expect(new Set(forTarget.map((record) => record.pairIndex))).toEqual(new Set([1, 2]));
+    });
   });
 
-  it('keeps the category sides fixed for the duration of a scored round', () => {
+  it('excludes warm-up trials from the scored result', () => {
     const engine = renderHook(() => useActivityEngine()).result;
-    act(() => engine.current.actions.beginRounds());
+    completeWholeActivity(engine);
 
-    const firstAssignment = engine.current.currentAssignment;
+    const { targetA, targetB } = engine.current.result;
+    expect(targetA.totalTrials).toBe(scoredBlockTrials * 2);
+    expect(targetB.totalTrials).toBe(scoredBlockTrials * 2);
+    expect(targetA.scoredTrials).toBe(SCORED_PER_BLOCK * 2);
+    expect(targetB.scoredTrials).toBe(SCORED_PER_BLOCK * 2);
+  });
+
+  it('opens each block with the attribute-only run the score discards', () => {
+    const engine = renderHook(() => useActivityEngine()).result;
+    act(() => engine.current.actions.startBlocks());
+    act(() => engine.current.actions.startBlock());
+
+    const opening = engine.current.trialRecords;
+    for (let i = 0; i < leadingAttributeTrials; i += 1) {
+      answerCurrentTrial(engine);
+    }
+    engine.current.trialRecords.slice(opening.length).forEach((record) => {
+      expect(['attributeA', 'attributeB']).toContain(record.category);
+    });
+  });
+
+  it('keeps the focal pair fixed for the duration of a block', () => {
+    const engine = renderHook(() => useActivityEngine()).result;
+    act(() => engine.current.actions.startBlocks());
+    act(() => engine.current.actions.startBlock());
+
+    const first = engine.current.focal;
     answerCurrentTrial(engine);
     answerCurrentTrial(engine);
 
-    expect(engine.current.currentAssignment?.leftLabels).toEqual(firstAssignment?.leftLabels);
-    expect(engine.current.currentAssignment?.rightLabels).toEqual(firstAssignment?.rightLabels);
+    expect(engine.current.focal?.focalLabels).toEqual(first?.focalLabels);
+    expect(engine.current.focal?.focalSide).toBe(FOCAL_SIDE);
   });
 
-  it('swaps the pairing between the two scored rounds', () => {
+  it('keeps the same attribute focal in every block and swaps only the target', () => {
     const engine = renderHook(() => useActivityEngine()).result;
-    expect(engine.current.randomisation.round1.pairing).not.toBe(engine.current.randomisation.round2.pairing);
+    const { activity, randomisation } = engine.current;
+    const focalAttributeLabel = activity.labels[activity.focalAttribute];
+
+    randomisation.blocks.forEach((block) => {
+      const labels = [activity.labels[block.pairing === 'A' ? 'targetA' : 'targetB'], focalAttributeLabel];
+      expect(labels).toContain(focalAttributeLabel);
+    });
+    expect(new Set(randomisation.blocks.slice(1).map((block) => block.pairing)).size).toBe(2);
   });
 
   describe('restart', () => {
-    it('clears trials, resets the result and generates a new pairing order', () => {
+    it('clears trials, resets the result and generates a new block plan', () => {
       const engine = renderHook(() => useActivityEngine()).result;
       completeWholeActivity(engine);
       act(() => engine.current.actions.showResult());
@@ -215,11 +257,11 @@ describe('useActivityEngine', () => {
 
       expect(engine.current.phase).toBe('instructions');
       expect(engine.current.trialRecords).toHaveLength(0);
-      expect(engine.current.result.pairingA.usableTrials).toBe(0);
-      expect(engine.current.result.pairingB.usableTrials).toBe(0);
+      expect(engine.current.result.targetA.usableTrials).toBe(0);
+      expect(engine.current.result.targetB.usableTrials).toBe(0);
       expect(engine.current.randomisation).not.toBe(previousRandomisation);
-      expect(engine.current.practiceComplete).toBe(false);
-      expect(engine.current.transitionStage).toBe('notice');
+      expect(engine.current.warmUpComplete).toBe(false);
+      expect(engine.current.currentBlock?.blockNumber).toBe(0);
     });
 
     it('removes any session-stored activity data', () => {
@@ -257,11 +299,16 @@ describe('useActivityEngine', () => {
       Object.defineProperty(document, 'hidden', { value: hidden, configurable: true });
     }
 
+    function startFirstBlock(engine: Engine) {
+      act(() => engine.current.actions.startBlocks());
+      act(() => engine.current.actions.startBlock());
+    }
+
     afterEach(() => setTabHidden(false));
 
     it('flags the current trial and warns the participant when the tab is hidden', () => {
       const engine = renderHook(() => useActivityEngine()).result;
-      act(() => engine.current.actions.beginRounds());
+      startFirstBlock(engine);
 
       act(() => {
         setTabHidden(true);
@@ -276,7 +323,7 @@ describe('useActivityEngine', () => {
 
     it('flags the current trial on focus loss without interrupting with a message', () => {
       const engine = renderHook(() => useActivityEngine()).result;
-      act(() => engine.current.actions.beginRounds());
+      startFirstBlock(engine);
 
       act(() => {
         window.dispatchEvent(new Event('blur'));
@@ -290,7 +337,7 @@ describe('useActivityEngine', () => {
 
     it('does not carry an interruption over to the following trial', () => {
       const engine = renderHook(() => useActivityEngine()).result;
-      act(() => engine.current.actions.beginRounds());
+      startFirstBlock(engine);
 
       act(() => {
         window.dispatchEvent(new Event('blur'));
@@ -304,7 +351,7 @@ describe('useActivityEngine', () => {
 
     it('excludes interrupted trials from the comparison', () => {
       const engine = renderHook(() => useActivityEngine()).result;
-      act(() => engine.current.actions.beginRounds());
+      startFirstBlock(engine);
 
       act(() => {
         window.dispatchEvent(new Event('blur'));
@@ -312,14 +359,14 @@ describe('useActivityEngine', () => {
       answerCurrentTrial(engine);
       answerCurrentTrial(engine);
 
-      const pairing = engine.current.randomisation.round1.pairing;
-      const summary = pairing === 'A' ? engine.current.result.pairingA : engine.current.result.pairingB;
+      const pairing = engine.current.randomisation.blocks[1].pairing;
+      const summary = pairing === 'A' ? engine.current.result.targetA : engine.current.result.targetB;
       expect(summary.totalTrials).toBe(1);
     });
 
     it('lets the participant dismiss the interruption message and carry on', () => {
       const engine = renderHook(() => useActivityEngine()).result;
-      act(() => engine.current.actions.beginRounds());
+      startFirstBlock(engine);
 
       act(() => {
         setTabHidden(true);
@@ -328,7 +375,7 @@ describe('useActivityEngine', () => {
       act(() => engine.current.dismissMajorInterruption());
 
       expect(engine.current.majorInterruption).toBe(false);
-      expect(engine.current.phase).toBe('round1');
+      expect(engine.current.phase).toBe('block');
       expect(engine.current.currentTrial).not.toBeNull();
     });
   });
@@ -344,12 +391,9 @@ describe('useActivityEngine', () => {
       expect(raw).not.toContain('name');
     });
 
-    it('restarts the activity rather than resuming mid-round', () => {
+    it('restarts the activity rather than resuming mid-block', () => {
       const first = renderHook(() => useActivityEngine());
-      act(() => first.result.current.actions.startActivity());
-      act(() => first.result.current.actions.acknowledge(true));
-      act(() => first.result.current.actions.continueFromInformation());
-      act(() => first.result.current.actions.startPractice());
+      reachWarmUp(first.result);
       answerCurrentTrial(first.result);
       first.unmount();
 

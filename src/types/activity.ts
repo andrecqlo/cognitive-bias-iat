@@ -2,24 +2,53 @@ import type { CategorySlot } from '../config/activities';
 
 export type Side = 'left' | 'right';
 
+/**
+ * Which target shares the focal pair with the focal attribute in a block.
+ *
+ * In a Brief IAT the attribute stays focal throughout and the target swaps, so
+ * a block is identified by its target: `A` means targetA was focal, `B` means
+ * targetB was. The contrast between the two is the whole measure.
+ */
 export type Pairing = 'A' | 'B';
 
+/** The two consecutive-block pairs, each of which yields its own D. */
+export type PairIndex = 1 | 2;
+
+export type BlockKind = 'warmUp' | 'scored';
+
 /**
- * Which block of the activity a trial belongs to. Practice blocks are never
- * scored or included in the result comparison.
+ * One block of the session, decided up front so the generator, the engine and
+ * the between-block screens all read the same plan.
  */
-export type TrialBlock =
-  | 'practice-identity'
-  | 'practice-competence'
-  | 'practice-transition'
-  | Pairing;
+export interface BlockSpec {
+  /** 0 for the warm-up, then 1 to 4 for the scored blocks in presentation order. */
+  blockNumber: number;
+  kind: BlockKind;
+  pairing: Pairing;
+  /** Null for the warm-up, which belongs to no pair and is never scored. */
+  pairIndex: PairIndex | null;
+  trials: number;
+}
 
 export interface Trial {
   id: string;
   stimulus: string;
   category: CategorySlot;
+  /**
+   * Which side answers this trial. The focal side is fixed for the session, so
+   * this is really "does the word belong to one of the two focal categories".
+   */
   correctSide: Side;
-  block: TrialBlock;
+  blockNumber: number;
+  /**
+   * Position within its own block, 0-based. Scoring drops the opening trials of
+   * every block, which is a per-block rule rather than a per-session one.
+   */
+  positionInBlock: number;
+  /** Null on warm-up trials, which never reach the score. */
+  pairing: Pairing | null;
+  /** Null on warm-up trials. */
+  pairIndex: PairIndex | null;
 }
 
 export interface TrialRecord extends Trial {
@@ -39,30 +68,36 @@ export interface TrialRecord extends Trial {
   interrupted: boolean;
 }
 
-/** Which two categories appear on each side for one round of the activity. */
-export interface SideAssignment {
-  pairing: Pairing;
-  leftCategories: CategorySlot[];
-  rightCategories: CategorySlot[];
+/**
+ * The two categories a block asks the participant to watch for, and the side
+ * that answers "yes, one of those".
+ */
+export interface FocalAssignment {
+  focalCategories: CategorySlot[];
+  focalSide: Side;
 }
 
 export type ActivityPhase =
   | 'landing'
   | 'information'
+  /** Defines every word in use, before the instructions and any trial. */
+  | 'definitions'
   | 'instructions'
-  | 'practice'
-  | 'round1'
-  | 'transition'
-  | 'round2'
+  | 'warmUp'
+  | 'blockIntro'
+  | 'block'
   | 'resultChoice'
   | 'result'
   | 'completion';
 
 /** Randomised decisions made once per session, kept out of the UI layer. */
 export interface SessionRandomisation {
+  /**
+   * Which target is focal in the first scored block. Counterbalanced by coin
+   * flip, which is all that can be done when nothing leaves the device and
+   * there is no sample to balance across.
+   */
   firstPairing: Pairing;
-  round1: SideAssignment;
-  round2: SideAssignment;
-  practiceTargetLeft: Extract<CategorySlot, 'targetA' | 'targetB'>;
-  practiceAttributeLeft: Extract<CategorySlot, 'attributeA' | 'attributeB'>;
+  /** Warm-up first, then the four scored blocks in presentation order. */
+  blocks: BlockSpec[];
 }

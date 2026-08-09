@@ -8,9 +8,16 @@ import type { Side } from './types/activity';
 
 /** The activity a participant reaches by clicking the first card. */
 const ACTIVITY = ACTIVITIES[0];
+const { warmUpTrials, scoredBlockTrials, scoredBlockCount } = ACTIVITY_CONFIG.blocks;
+
+/** The two categories the current block is asking about, read off the screen. */
+function focalLabelsOnScreen(): string[] {
+  const label = screen.getByRole('button', { name: /Respond right/ }).getAttribute('aria-label') ?? '';
+  return label.replace(/^Respond right: /, '').split(' or ');
+}
 
 /** Works out the correct side from what is on screen: the stimulus phrase and
- * the categories named in each response zone's label. */
+ * the categories named in the focal response zone. */
 function correctSideOnScreen(): Side {
   const stimulus = screen.getByTestId('stimulus').textContent ?? '';
   const slot = (Object.keys(ACTIVITY.stimuli) as CategorySlot[]).find((key) =>
@@ -18,8 +25,7 @@ function correctSideOnScreen(): Side {
   );
   if (!slot) throw new Error(`Unrecognised stimulus: ${stimulus}`);
 
-  const leftLabel = screen.getByRole('button', { name: /Respond left/ }).getAttribute('aria-label') ?? '';
-  return leftLabel.includes(ACTIVITY.labels[slot]) ? 'left' : 'right';
+  return focalLabelsOnScreen().includes(ACTIVITY.labels[slot]) ? 'right' : 'left';
 }
 
 /** The picker gives each card its own start button, labelled by activity. */
@@ -51,11 +57,32 @@ function answerCurrentTrial(via: 'click' | 'keyboard') {
   });
 }
 
-function reachPracticeRound() {
+function reachDefinitions() {
   startActivity();
   fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: CONTENT.information.continueButton }));
+}
+
+function reachInstructions() {
+  reachDefinitions();
+  fireEvent.click(screen.getByRole('button', { name: CONTENT.definitions.continueButton }));
+}
+
+function reachWarmUp() {
+  reachInstructions();
   fireEvent.click(screen.getByRole('button', { name: CONTENT.instructions.startPracticeButton }));
+}
+
+/** Warm-up plus all four scored blocks, taking each announcement in turn. */
+function completeActivity() {
+  reachWarmUp();
+  for (let i = 0; i < warmUpTrials; i += 1) answerCurrentTrial('click');
+
+  fireEvent.click(screen.getByRole('button', { name: CONTENT.warmUp.beginButton }));
+  for (let block = 0; block < scoredBlockCount; block += 1) {
+    fireEvent.click(screen.getByRole('button', { name: CONTENT.blockIntro.startButton }));
+    for (let i = 0; i < scoredBlockTrials; i += 1) answerCurrentTrial('click');
+  }
 }
 
 describe('Hidden Associations activity', () => {
@@ -88,7 +115,23 @@ describe('Hidden Associations activity', () => {
     expect(continueButton).toBeEnabled();
 
     fireEvent.click(continueButton);
-    expect(screen.getByRole('heading', { level: 1, name: CONTENT.instructions.heading })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: CONTENT.definitions.heading })).toBeInTheDocument();
+  });
+
+  it('defines every word that will appear, before any trial runs', () => {
+    render(<App />);
+    reachDefinitions();
+
+    expect(screen.getByRole('heading', { level: 1, name: CONTENT.definitions.heading })).toBeInTheDocument();
+
+    // A word met for the first time mid-block is classified slowly because it
+    // is unfamiliar, and that slowness lands in the score.
+    const onScreen = (document.body.textContent ?? '').toLowerCase();
+    Object.values(ACTIVITY.stimuli)
+      .flat()
+      .forEach((word) => {
+        expect(onScreen, `"${word}" is never defined`).toContain(word.toLowerCase());
+      });
   });
 
   it('states that the activity may not suit everyone', () => {
@@ -98,37 +141,35 @@ describe('Hidden Associations activity', () => {
     expect(screen.getByText(CONTENT.information.accessibilityNote)).toBeInTheDocument();
   });
 
-  it('lets the instructions demonstration be tried before the practice round', () => {
+  it('lets the instructions demonstration be tried before the warm-up', () => {
     render(<App />);
-    startActivity();
-    fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.information.continueButton }));
+    reachInstructions();
 
-    fireEvent.click(screen.getByRole('button', { name: /Demonstration: respond left/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Demonstration: respond right/ }));
 
-    expect(screen.getByText(/belongs with “Competent”, so you tap the left side/)).toBeInTheDocument();
+    expect(screen.getByText(CONTENT.instructions.demoCorrect)).toBeInTheDocument();
   });
 
-  it('advances through practice trials with a mouse', () => {
+  it('advances through warm-up trials with a mouse', () => {
     render(<App />);
-    reachPracticeRound();
+    reachWarmUp();
 
-    expect(screen.getByText(/Practice · Item 1 of 16/)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Warm-up · Item 1 of ${warmUpTrials}`))).toBeInTheDocument();
     answerCurrentTrial('click');
-    expect(screen.getByText(/Practice · Item 2 of 16/)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Warm-up · Item 2 of ${warmUpTrials}`))).toBeInTheDocument();
   });
 
-  it('advances through practice trials with the optional keyboard shortcuts', () => {
+  it('advances through warm-up trials with the optional keyboard shortcuts', () => {
     render(<App />);
-    reachPracticeRound();
+    reachWarmUp();
 
     answerCurrentTrial('keyboard');
-    expect(screen.getByText(/Practice · Item 2 of 16/)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Warm-up · Item 2 of ${warmUpTrials}`))).toBeInTheDocument();
   });
 
   it('also accepts the arrow keys', () => {
     render(<App />);
-    reachPracticeRound();
+    reachWarmUp();
 
     const side = correctSideOnScreen();
     act(() => {
@@ -141,12 +182,12 @@ describe('Hidden Associations activity', () => {
       vi.advanceTimersByTime(400);
     });
 
-    expect(screen.getByText(/Practice · Item 2 of 16/)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Warm-up · Item 2 of ${warmUpTrials}`))).toBeInTheDocument();
   });
 
   it('requires an incorrect answer to be corrected before moving on', () => {
     render(<App />);
-    reachPracticeRound();
+    reachWarmUp();
 
     const stimulus = screen.getByTestId('stimulus').textContent;
     const correct = correctSideOnScreen();
@@ -160,7 +201,7 @@ describe('Hidden Associations activity', () => {
       vi.advanceTimersByTime(400);
     });
 
-    expect(screen.getByText(/Practice · Item 1 of 16/)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Warm-up · Item 1 of ${warmUpTrials}`))).toBeInTheDocument();
     expect(screen.getByTestId('stimulus')).toHaveTextContent(stimulus ?? '');
     expect(screen.getByText(/choose the correct side to continue/i)).toBeInTheDocument();
 
@@ -169,21 +210,49 @@ describe('Hidden Associations activity', () => {
       vi.advanceTimersByTime(400);
     });
 
-    expect(screen.getByText(/Practice · Item 2 of 16/)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Warm-up · Item 2 of ${warmUpTrials}`))).toBeInTheDocument();
+  });
+
+  it('names the two categories to watch for before each scored block', () => {
+    render(<App />);
+    reachWarmUp();
+    for (let i = 0; i < warmUpTrials; i += 1) answerCurrentTrial('click');
+    fireEvent.click(screen.getByRole('button', { name: CONTENT.warmUp.beginButton }));
+
+    expect(screen.getByRole('heading', { level: 1, name: CONTENT.blockIntro.heading })).toBeInTheDocument();
+    expect(screen.getByText(CONTENT.round.nonFocalLabel)).toBeInTheDocument();
+    // The first announcement has nothing to have changed from.
+    expect(screen.queryByText(CONTENT.blockIntro.changedNote)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: CONTENT.blockIntro.startButton }));
+    for (let i = 0; i < scoredBlockTrials; i += 1) answerCurrentTrial('click');
+
+    expect(screen.getByText(CONTENT.blockIntro.changedNote)).toBeInTheDocument();
+  });
+
+  it('keeps the same attribute focal while the target swaps between blocks', () => {
+    render(<App />);
+    reachWarmUp();
+    for (let i = 0; i < warmUpTrials; i += 1) answerCurrentTrial('click');
+    fireEvent.click(screen.getByRole('button', { name: CONTENT.warmUp.beginButton }));
+
+    const focalAttributeLabel = ACTIVITY.labels[ACTIVITY.focalAttribute];
+    const seenTargets = new Set<string>();
+
+    for (let block = 0; block < 2; block += 1) {
+      fireEvent.click(screen.getByRole('button', { name: CONTENT.blockIntro.startButton }));
+      const labels = focalLabelsOnScreen();
+      expect(labels).toContain(focalAttributeLabel);
+      labels.filter((label) => label !== focalAttributeLabel).forEach((label) => seenTargets.add(label));
+      for (let i = 0; i < scoredBlockTrials; i += 1) answerCurrentTrial('click');
+    }
+
+    expect(seenTargets).toEqual(new Set([ACTIVITY.labels.targetA, ACTIVITY.labels.targetB]));
   });
 
   it('offers an equal choice between showing and skipping the result', () => {
     render(<App />);
-    reachPracticeRound();
-
-    // Practice, round one, transition practice and round two.
-    for (let i = 0; i < 16; i += 1) answerCurrentTrial('click');
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.practice.beginButton }));
-    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
-    fireEvent.click(screen.getByRole('button', { name: /Practise the new pairing/ }));
-    for (let i = 0; i < ACTIVITY_CONFIG.transitionPracticeTrials; i += 1) answerCurrentTrial('click');
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.transition.startFinalButton }));
-    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
+    completeActivity();
 
     expect(screen.getByRole('heading', { level: 1, name: CONTENT.resultChoice.heading })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: CONTENT.resultChoice.showButton })).toBeInTheDocument();
@@ -192,15 +261,7 @@ describe('Hidden Associations activity', () => {
 
   it('reaches the completion screen when the result is skipped', () => {
     render(<App />);
-    reachPracticeRound();
-
-    for (let i = 0; i < 16; i += 1) answerCurrentTrial('click');
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.practice.beginButton }));
-    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
-    fireEvent.click(screen.getByRole('button', { name: /Practise the new pairing/ }));
-    for (let i = 0; i < ACTIVITY_CONFIG.transitionPracticeTrials; i += 1) answerCurrentTrial('click');
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.transition.startFinalButton }));
-    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
+    completeActivity();
 
     fireEvent.click(screen.getByRole('button', { name: CONTENT.resultChoice.skipButton }));
 
@@ -210,15 +271,7 @@ describe('Hidden Associations activity', () => {
 
   it('shows the result with its caveat when the result is chosen', () => {
     render(<App />);
-    reachPracticeRound();
-
-    for (let i = 0; i < 16; i += 1) answerCurrentTrial('click');
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.practice.beginButton }));
-    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
-    fireEvent.click(screen.getByRole('button', { name: /Practise the new pairing/ }));
-    for (let i = 0; i < ACTIVITY_CONFIG.transitionPracticeTrials; i += 1) answerCurrentTrial('click');
-    fireEvent.click(screen.getByRole('button', { name: CONTENT.transition.startFinalButton }));
-    for (let i = 0; i < ACTIVITY_CONFIG.scoredRoundTrials; i += 1) answerCurrentTrial('click');
+    completeActivity();
 
     fireEvent.click(screen.getByRole('button', { name: CONTENT.resultChoice.showButton }));
 
@@ -227,6 +280,17 @@ describe('Hidden Associations activity', () => {
     expect(screen.getByText(CONTENT.result.whatDoesThisMeanToggle)).toBeInTheDocument();
     // Result wording must never describe the participant themselves.
     expect(screen.queryByText(/\bbiased\b|\bprejudice/i)).not.toBeInTheDocument();
+  });
+
+  it('reports a direction without any size, and without printing the score', () => {
+    render(<App />);
+    completeActivity();
+    fireEvent.click(screen.getByRole('button', { name: CONTENT.resultChoice.showButton }));
+
+    expect(screen.getByText(CONTENT.result.noStrengthNote)).toBeInTheDocument();
+    // No effect-size wording, and no bare figure for a reader to over-read.
+    expect(screen.queryByText(/\bslight(ly)?\b|\bmoderate(ly)?\b|\bstrong(ly)?\b|\bmarkedly\b/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^-?\d\.\d{2}$/)).not.toBeInTheDocument();
   });
 
   it('offers the references as external links that cannot reach back into this page', () => {

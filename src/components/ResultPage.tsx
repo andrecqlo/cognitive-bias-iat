@@ -1,6 +1,6 @@
 import type { ActivityDefinition } from '../config/activities';
 import { CONTENT } from '../config/content';
-import type { ActivityResult, RoundSummary } from '../utils/calculateResult';
+import type { ActivityResult, TargetSummary } from '../utils/calculateResult';
 import { Button } from './ui/Button';
 import { Disclosure } from './ui/Disclosure';
 import { Card, PageShell } from './ui/PageShell';
@@ -11,15 +11,13 @@ interface ResultPageProps {
   onContinue: () => void;
 }
 
+/** Direction only. No sentence here carries how large the gap was. */
 function patternSentence(activity: ActivityDefinition, result: ActivityResult): string {
-  const { strengths, incomplete } = CONTENT.result;
-  if (result.dScore === null) return incomplete;
-  if (result.direction === 'similar' || result.strength === null) return activity.result.similar;
-  const template =
-    result.direction === 'fasterWithAttributeA'
-      ? activity.result.fasterWithAttributeA
-      : activity.result.fasterWithAttributeB;
-  return template.replace('{strength}', strengths[result.strength]);
+  if (result.dScore === null) return CONTENT.result.incomplete;
+  if (result.direction === 'similar') return activity.result.similar;
+  return result.direction === 'fasterWithTargetA'
+    ? activity.result.fasterWithTargetA
+    : activity.result.fasterWithTargetB;
 }
 
 function formatMs(value: number | null): string {
@@ -48,7 +46,7 @@ function ComparisonBar({ label, value, maxValue }: { label: string; value: numbe
   );
 }
 
-function RoundDetail({ summary, title }: { summary: RoundSummary; title: string }) {
+function TargetDetail({ summary, title }: { summary: TargetSummary; title: string }) {
   const { labels } = CONTENT.result;
 
   return (
@@ -76,7 +74,7 @@ function RoundDetail({ summary, title }: { summary: RoundSummary; title: string 
 
 export function ResultPage({ activity, result, onContinue }: ResultPageProps) {
   const { result: copy } = CONTENT;
-  const maxMean = Math.max(result.pairingA.meanReactionTimeMs ?? 0, result.pairingB.meanReactionTimeMs ?? 0);
+  const maxMean = Math.max(result.targetA.meanReactionTimeMs ?? 0, result.targetB.meanReactionTimeMs ?? 0);
 
   return (
     <PageShell wide>
@@ -118,13 +116,13 @@ export function ResultPage({ activity, result, onContinue }: ResultPageProps) {
         </h2>
         <div className="mt-4 space-y-5">
           <ComparisonBar
-            label={`${copy.labels.meanPrefix} — ${activity.pairingLabels.a} pairing`}
-            value={result.pairingA.meanReactionTimeMs}
+            label={`${copy.labels.meanPrefix} — ${activity.blockLabels.targetAFocal}`}
+            value={result.targetA.meanReactionTimeMs}
             maxValue={maxMean}
           />
           <ComparisonBar
-            label={`${copy.labels.meanPrefix} — ${activity.pairingLabels.b} pairing`}
-            value={result.pairingB.meanReactionTimeMs}
+            label={`${copy.labels.meanPrefix} — ${activity.blockLabels.targetBFocal}`}
+            value={result.targetB.meanReactionTimeMs}
             maxValue={maxMean}
           />
         </div>
@@ -133,6 +131,7 @@ export function ResultPage({ activity, result, onContinue }: ResultPageProps) {
             {copy.differenceLabel}: <span className="font-semibold text-ink">{result.differenceMs} ms</span>
           </p>
         )}
+        <p className="mt-3 text-sm leading-relaxed text-muted">{copy.noStrengthNote}</p>
       </section>
 
       <section className="mt-7" aria-labelledby="detail-heading">
@@ -140,31 +139,17 @@ export function ResultPage({ activity, result, onContinue }: ResultPageProps) {
           {copy.detailHeading}
         </h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <RoundDetail summary={result.pairingA} title={activity.pairingLabels.a} />
-          <RoundDetail summary={result.pairingB} title={activity.pairingLabels.b} />
+          <TargetDetail summary={result.targetA} title={activity.blockLabels.targetAFocal} />
+          <TargetDetail summary={result.targetB} title={activity.blockLabels.targetBFocal} />
         </div>
       </section>
 
+      {/* No score disclosure. The figure a D-score produces is a size, and this
+          page reports direction only — printing the number, even behind a
+          toggle, would put back exactly what the bands were removed for. */}
       <div className="mt-7 space-y-3">
         <Disclosure summary={copy.whatDoesThisMeanToggle}>
           <p className="leading-relaxed">{copy.whatDoesThisMean}</p>
-        </Disclosure>
-        {/* The number lives here rather than on the page: a bare figure invites
-            more precision than the activity can support. */}
-        <Disclosure summary={copy.scoreToggle}>
-          <p className="leading-relaxed">{copy.scoreExplanation}</p>
-          <p className="mt-3 leading-relaxed">{copy.scoreBandsIntro}</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            {copy.scoreBands.map((band) => (
-              <li key={band}>{band}</li>
-            ))}
-          </ul>
-          {result.dScore !== null && (
-            <p className="mt-3">
-              {copy.scoreYours}: <span className="font-semibold text-ink">{result.dScore.toFixed(2)}</span>
-            </p>
-          )}
-          <p className="mt-3 leading-relaxed">{copy.scoreCaveat}</p>
         </Disclosure>
       </div>
 

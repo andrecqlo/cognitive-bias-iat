@@ -1,31 +1,48 @@
 import { useState } from 'react';
 import { CONTENT } from '../config/content';
 import type { Side } from '../types/activity';
+import { FOCAL_SIDE } from '../utils/generateTrials';
 import { Button } from './ui/Button';
 import { Card, PageShell } from './ui/PageShell';
 
 interface InstructionsProps {
-  onStartPractice: () => void;
+  onStartWarmUp: () => void;
   onBack: () => void;
   prefersReducedMotion: boolean;
 }
 
 type DemoState = 'waiting' | 'correct' | 'incorrect';
 
-/** A miniature, untimed copy of the trial layout used only to explain the task. */
+/**
+ * A miniature, untimed copy of the trial layout used only to explain the task.
+ *
+ * The demonstration word belongs to one of the two categories on show, so the
+ * answer is the focal side. It uses the same side the activity uses rather than
+ * a fixed one, so nobody learns the wrong key here.
+ */
 function Demonstration({ prefersReducedMotion }: { prefersReducedMotion: boolean }) {
   const [state, setState] = useState<DemoState>('waiting');
-  const { instructions } = CONTENT;
+  const { instructions, round } = CONTENT;
 
-  const respond = (side: Side) => setState(side === 'left' ? 'correct' : 'incorrect');
+  const respond = (side: Side) => setState(side === FOCAL_SIDE ? 'correct' : 'incorrect');
+
+  const labelFor = (side: Side) =>
+    side === FOCAL_SIDE ? instructions.demoFocalCategories.join(' or ') : round.nonFocalLabel;
 
   return (
     <Card className="mt-6">
       <p className="text-sm font-semibold tracking-wide text-muted uppercase">{instructions.demoCaption}</p>
 
-      <div className="mt-4 flex items-start justify-between gap-3">
-        <p className="text-base font-semibold text-ink">{instructions.demoLeftCategory}</p>
-        <p className="text-base font-semibold text-ink">{instructions.demoRightCategory}</p>
+      <div className="mt-4 rounded-[8px] border-2 border-ink bg-zone px-4 py-2 text-center">
+        <span className="text-[0.7rem] tracking-wide text-muted uppercase">{instructions.demoWatchFor}</span>
+        <p className="text-base font-semibold text-ink sm:text-lg">
+          {instructions.demoFocalCategories.map((label, index) => (
+            <span key={label}>
+              {index > 0 && <span className="mx-1 text-sm font-normal text-muted lowercase">or</span>}
+              {label}
+            </span>
+          ))}
+        </p>
       </div>
 
       <div
@@ -46,19 +63,15 @@ function Demonstration({ prefersReducedMotion }: { prefersReducedMotion: boolean
             key={side}
             type="button"
             onClick={() => respond(side)}
-            aria-label={`Demonstration: respond ${side} for ${
-              side === 'left' ? instructions.demoLeftCategory : instructions.demoRightCategory
-            }`}
+            aria-label={`Demonstration: respond ${side} for ${labelFor(side)}`}
             className={`no-select flex min-h-20 flex-1 flex-col items-center justify-center gap-1 rounded-[8px] border-2 bg-zone px-3 py-3 transition-colors active:bg-zone-press ${
-              state === 'waiting' && side === 'left' ? 'border-signal' : 'border-line'
+              state === 'waiting' && side === FOCAL_SIDE ? 'border-signal' : 'border-line'
             }`}
           >
             <span aria-hidden="true" className="text-signal">
               {side === 'left' ? '◀' : '▶'}
             </span>
-            <span className="text-base font-semibold text-ink">
-              {side === 'left' ? instructions.demoLeftCategory : instructions.demoRightCategory}
-            </span>
+            <span className="text-center text-base font-semibold text-ink">{labelFor(side)}</span>
           </button>
         ))}
       </div>
@@ -92,7 +105,7 @@ function Demonstration({ prefersReducedMotion }: { prefersReducedMotion: boolean
   );
 }
 
-export function Instructions({ onStartPractice, onBack, prefersReducedMotion }: InstructionsProps) {
+export function Instructions({ onStartWarmUp, onBack, prefersReducedMotion }: InstructionsProps) {
   const { instructions } = CONTENT;
 
   return (
@@ -115,7 +128,7 @@ export function Instructions({ onStartPractice, onBack, prefersReducedMotion }: 
 
       <Demonstration prefersReducedMotion={prefersReducedMotion} />
 
-      <Button className="mt-8 w-full sm:w-auto sm:self-start" onClick={onStartPractice}>
+      <Button className="mt-8 w-full sm:w-auto sm:self-start" onClick={onStartWarmUp}>
         {instructions.startPracticeButton}
       </Button>
 

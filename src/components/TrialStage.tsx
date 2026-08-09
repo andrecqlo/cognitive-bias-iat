@@ -1,46 +1,52 @@
 import { CONTENT } from '../config/content';
-import type { DisplayAssignment, TrialFeedback } from '../hooks/useActivityEngine';
+import type { FocalDisplay, TrialFeedback } from '../hooks/useActivityEngine';
 import type { Side, Trial } from '../types/activity';
 import { ResponseZone } from './ResponseZone';
 import { Button } from './ui/Button';
 
 interface TrialStageProps {
   trial: Trial;
-  assignment: DisplayAssignment;
+  focal: FocalDisplay;
   feedback: TrialFeedback;
   trialNumber: number;
   trialTotal: number;
-  roundLabel: string;
+  blockLabel: string;
   onRespond: (side: Side) => void;
   prefersReducedMotion: boolean;
   interruptionNotice: boolean;
   onDismissInterruption: () => void;
 }
 
-function CategoryHeading({ labels, align }: { labels: string[]; align: 'left' | 'right' }) {
+/**
+ * The two categories to watch for, kept on screen for the whole block.
+ *
+ * Central and unmissable rather than split to the two sides: the participant is
+ * answering one question — "is this word one of those two?" — and the pair has
+ * to read as a pair for that question to stay simple.
+ */
+function FocalBanner({ labels }: { labels: string[] }) {
   return (
-    <p
-      className={`flex max-w-[46%] flex-col text-[clamp(0.8rem,3.2vw,1.05rem)] leading-tight font-semibold text-ink ${
-        align === 'left' ? 'items-start text-left' : 'items-end text-right'
-      }`}
-    >
-      {labels.map((label, index) => (
-        <span key={label} className={align === 'left' ? 'text-left' : 'text-right'}>
-          {index > 0 && <span className="mr-1 text-xs font-normal text-muted lowercase">or</span>}
-          {label}
-        </span>
-      ))}
-    </p>
+    <div className="mx-auto mt-3 flex max-w-md flex-col items-center rounded-[8px] border-2 border-ink bg-zone px-4 py-2">
+      <span className="text-[0.7rem] tracking-wide text-muted uppercase">{CONTENT.round.watchForLabel}</span>
+      <p className="text-center text-[clamp(0.95rem,4vw,1.25rem)] leading-tight font-semibold text-ink">
+        {labels.map((label, index) => (
+          <span key={label}>
+            {index > 0 && <span className="mx-1 text-sm font-normal text-muted lowercase">or</span>}
+            {label}
+          </span>
+        ))}
+      </p>
+    </div>
   );
 }
 
 export function TrialStage({
   trial,
-  assignment,
+  focal,
   feedback,
   trialNumber,
   trialTotal,
-  roundLabel,
+  blockLabel,
   onRespond,
   prefersReducedMotion,
   interruptionNotice,
@@ -52,6 +58,10 @@ export function TrialStage({
       : feedback === 'correct'
         ? 'border-ink bg-zone'
         : 'border-line bg-surface';
+
+  const nonFocalLabels = [CONTENT.round.nonFocalLabel];
+  const leftLabels = focal.focalSide === 'left' ? focal.focalLabels : nonFocalLabels;
+  const rightLabels = focal.focalSide === 'right' ? focal.focalLabels : nonFocalLabels;
 
   return (
     <div
@@ -65,7 +75,7 @@ export function TrialStage({
     >
       <header className="shrink-0 px-3 pt-3">
         <p className="text-center text-xs tracking-wide text-muted uppercase sm:text-sm">
-          {roundLabel} · Item {trialNumber} of {trialTotal}
+          {blockLabel} · Item {trialNumber} of {trialTotal}
         </p>
         <div className="mx-auto mt-2 h-1 w-full max-w-md overflow-hidden rounded-full bg-zone">
           <div
@@ -73,12 +83,8 @@ export function TrialStage({
             style={{ width: `${trialTotal > 0 ? (trialNumber / trialTotal) * 100 : 0}%` }}
           />
         </div>
+        <FocalBanner labels={focal.focalLabels} />
       </header>
-
-      <div className="mt-3 flex shrink-0 items-start justify-between gap-3 px-3">
-        <CategoryHeading labels={assignment.leftLabels} align="left" />
-        <CategoryHeading labels={assignment.rightLabels} align="right" />
-      </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 py-3">
         <div
@@ -102,7 +108,7 @@ export function TrialStage({
               <span aria-hidden="true" className="mr-1 text-signal">
                 ✕
               </span>
-              {CONTENT.practice.incorrectHint}
+              {CONTENT.warmUp.incorrectHint}
             </span>
           )}
           {feedback === 'correct' && (
@@ -122,8 +128,8 @@ export function TrialStage({
       </p>
 
       <div className="mt-2 flex h-[30svh] max-h-64 min-h-28 shrink-0 gap-3 px-3 pb-3 landscape:h-[34svh] landscape:max-h-48">
-        <ResponseZone side="left" labels={assignment.leftLabels} onRespond={onRespond} keyboardKey="E or ←" />
-        <ResponseZone side="right" labels={assignment.rightLabels} onRespond={onRespond} keyboardKey="I or →" />
+        <ResponseZone side="left" labels={leftLabels} onRespond={onRespond} keyboardKey="E or ←" />
+        <ResponseZone side="right" labels={rightLabels} onRespond={onRespond} keyboardKey="I or →" />
       </div>
 
       {interruptionNotice && (

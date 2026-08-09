@@ -7,8 +7,12 @@ import type { ActivityPhase, SessionRandomisation, TrialRecord } from '../types/
  *
  * v2: `reactionTimeMs` changed from first-response latency to latency-to-correct.
  * v3: category keys became topic-independent slots, and sessions gained an activity.
+ * v4: the procedure became a Brief IAT — trials carry a block number, a position
+ *     within that block and a pair index, and the randomisation stores a block
+ *     plan rather than two side assignments. A v3 record would still parse and
+ *     would score as though every trial sat at position zero of no block.
  */
-export const STORAGE_KEY = 'hidden-associations-session-v3';
+export const STORAGE_KEY = 'hidden-associations-session-v4';
 
 export interface StoredSession {
   phase: ActivityPhase;

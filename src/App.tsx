@@ -1,12 +1,13 @@
-import { AssociationRound } from './components/AssociationRound';
+import { BlockIntro } from './components/BlockIntro';
 import { CompletionPage } from './components/CompletionPage';
+import { DefinitionsPage } from './components/DefinitionsPage';
 import { InformationPage } from './components/InformationPage';
 import { Instructions } from './components/Instructions';
 import { LandingPage } from './components/LandingPage';
-import { PracticeRound } from './components/PracticeRound';
 import { ResultChoice } from './components/ResultChoice';
 import { ResultPage } from './components/ResultPage';
-import { RoundTransition } from './components/RoundTransition';
+import { ScoredBlock } from './components/ScoredBlock';
+import { WarmUpRound } from './components/WarmUpRound';
 import { useActivityEngine } from './hooks/useActivityEngine';
 
 export default function App() {
@@ -33,24 +34,32 @@ export default function App() {
         />
       );
 
+    case 'definitions':
+      return (
+        <DefinitionsPage
+          activity={engine.activity}
+          onContinue={actions.continueFromDefinitions}
+          onBack={actions.returnHome}
+        />
+      );
+
     case 'instructions':
       return (
         <Instructions
-          onStartPractice={actions.startPractice}
+          onStartWarmUp={actions.startWarmUp}
           onBack={actions.returnHome}
           prefersReducedMotion={engine.prefersReducedMotion}
         />
       );
 
-    case 'practice':
-      return <PracticeRound engine={engine} />;
+    case 'warmUp':
+      return <WarmUpRound engine={engine} />;
 
-    case 'round1':
-    case 'round2':
-      return <AssociationRound engine={engine} />;
+    case 'blockIntro':
+      return <BlockIntro engine={engine} />;
 
-    case 'transition':
-      return <RoundTransition engine={engine} />;
+    case 'block':
+      return <ScoredBlock engine={engine} />;
 
     case 'resultChoice':
       return <ResultChoice onShow={actions.showResult} onSkip={actions.skipResult} />;

@@ -17,25 +17,26 @@ const ACCESSIBILITY_NOTE = 'It relies on timed visual sorting, which will not su
 export const CONTENT = {
   landing: {
     heading: 'Hidden Associations',
-    subtitle: 'Detecting subconscious associations based on the implicit association test.',
+    subtitle: 'Detecting subconscious associations, based on the Brief Implicit Association Test.',
     intro:
       'This activity looks at how quickly you link certain ideas — associations we often hold without realising. Results shift with mood, fatigue and repetition, and a single score is a poor predictor of how you actually behave. Treat it as a prompt to reflect, not a verdict.',
     chooseHeading: 'Choose an activity',
     chooseHint: 'Each one uses the same method with a different set of words.',
-    facts: ['Takes 5–7 minutes', 'Works on mobile and desktop', 'No sign-up', 'Your result stays on your device'],
+    facts: ['Takes 4–6 minutes', 'Works on mobile and desktop', 'No sign-up', 'Your result stays on your device'],
     startButton: 'Start',
     /** The one explainer on the page: what the method is and what you will do.
      * Split across two toggles it repeated itself. */
     howItWorksToggle: 'How does this work?',
     howItWorks:
-      'You sort words into categories as quickly as you can, and part-way through the pairings change. Most people are quicker when a pairing matches an association they already hold, and that gap in speed is what gets measured. At the end you choose whether to see a private comparison of your response times.',
+      'Each round names two categories to watch for. A word appears, and you say whether it belongs to one of those two or not, as quickly as you can. Part-way through, one of the two categories changes. Most people are quicker when the pair matches an association they already hold, and that gap in speed is what gets measured. At the end you choose whether to see a private comparison of your response times.',
     referencesToggle: 'Where to read more',
     referencesHint: 'These open in a new tab, on sites outside this one.',
     /**
-     * Two public-facing links and the two papers that matter most: the one that
-     * introduced the method, and the meta-analysis behind the caution above
-     * about predicting behaviour. Titles, authors and years verified against
-     * Crossref; do not add a reference without checking it resolves.
+     * Two public-facing links and the papers that matter most: the one that
+     * introduced this shorter form of the method, the one whose scoring
+     * procedure this activity follows, and the meta-analysis behind the caution
+     * above about predicting behaviour. Titles, authors and years verified
+     * against Crossref; do not add a reference without checking it resolves.
      */
     references: [
       {
@@ -49,9 +50,14 @@ export const CONTENT = {
         url: 'https://implicit.harvard.edu/implicit/faqs.html',
       },
       {
-        title: 'Greenwald, McGhee & Schwartz (1998)',
-        detail: 'The paper that introduced the method, in the Journal of Personality and Social Psychology.',
-        url: 'https://doi.org/10.1037/0022-3514.74.6.1464',
+        title: 'Sriram & Greenwald (2009)',
+        detail: 'The paper that introduced the Brief IAT, in Experimental Psychology.',
+        url: 'https://doi.org/10.1027/1618-3169.56.4.283',
+      },
+      {
+        title: 'Nosek, Bar-Anan, Sriram & Greenwald (2014)',
+        detail: 'The scoring procedure this activity follows, in PLOS ONE.',
+        url: 'https://doi.org/10.1371/journal.pone.0110938',
       },
       {
         title: 'Oswald et al. (2013)',
@@ -66,17 +72,10 @@ export const CONTENT = {
      * The consent gate, so it carries only what consent needs: what the
      * activity is not, the two things that might make someone decide not to
      * start, and where their responses go.
-     *
-     * Deliberately not here any more. "Not a validated psychological
-     * assessment" was saying what the acknowledgement below says word for word.
-     * The list of things that move a result — attention, tiredness, reading
-     * speed, device, test order — is on the landing page before this screen and
-     * in full on the result page, where someone is actually interpreting a
-     * number. It was being read three times; twice is enough.
      */
     points: [
       'This is a short demonstration — it cannot diagnose bias, prejudice, neurodivergence or personality.',
-      'Negative words such as “Inept” appear during the activity.',
+      'Negative words such as “incapable” appear during the activity.',
       ACCESSIBILITY_NOTE,
       'Nothing is uploaded or shared with an employer, facilitator or site owner.',
     ],
@@ -86,39 +85,61 @@ export const CONTENT = {
     checkboxHint: 'Select the box above to continue.',
     backButton: 'Back',
   },
+  /**
+   * Shown before the instructions, and so before any trial. The words
+   * themselves live on each activity; only the chrome is here.
+   *
+   * This screen is part of the procedure rather than background reading. A word
+   * met for the first time in the middle of a block is classified slowly
+   * because it is unfamiliar, not because of any association, and that slowness
+   * lands in the score.
+   */
+  definitions: {
+    heading: 'What these words mean',
+    intro: 'Two of these appear as category headings throughout. Read them before you start.',
+    continueButton: 'Continue',
+    backButton: 'Back',
+  },
   instructions: {
     heading: 'How it works',
     points: [
+      'Each round names two categories to watch for.',
       'A word appears in the middle of the screen.',
-      'Tap or click the side whose category it belongs to.',
+      'Tap the right side if it belongs to one of the two, and the left side if it does not.',
       'Go quickly, but get it right — a wrong tap has to be corrected before you continue.',
-      'The category pairings change part-way through.',
+      'One of the two categories changes between rounds.',
     ],
     demoCaption: 'Try it now:',
-    demoStimulus: 'Proficient',
-    demoLeftCategory: 'Competent',
-    demoRightCategory: 'Incompetent',
-    demoHint: 'This belongs on the left.',
-    demoCorrect: 'That’s it. “Proficient” belongs with “Competent”, so you tap the left side.',
-    demoIncorrect: 'In the activity you would correct this before moving on. “Proficient” belongs with “Competent”, on the left.',
+    demoWatchFor: 'Watch for:',
+    demoStimulus: 'skilled',
+    demoFocalCategories: ['Neurodivergent', 'Competent'],
+    demoHint: 'This is one of them, so it belongs on the right.',
+    demoCorrect: 'That’s it. “skilled” is a “Competent” word, so you tap the right side.',
+    demoIncorrect:
+      'In the activity you would correct this before moving on. “skilled” is a “Competent” word, one of the two to watch for, so it goes on the right.',
     demoReset: 'Reset demonstration',
-    startPracticeButton: 'Try a practice round',
+    startPracticeButton: 'Try a warm-up round',
   },
-  practice: {
+  warmUp: {
     tapHint: 'Tap or click a side to respond',
-    readyHeading: 'You’re ready. The categories will now appear together.',
+    readyHeading: 'You’re ready. The activity starts now.',
+    readyBody:
+      'Nothing so far has been counted. From here there are four short rounds, and the two categories to watch for change between them — the screen tells you each time.',
     beginButton: 'Begin activity',
     incorrectHint: 'Not quite — choose the correct side to continue.',
   },
   round: {
     tapHint: 'Tap or click a side to respond',
     keyboardHint: 'Keyboard: E or ← for left, I or → for right',
+    /** The left-hand response: everything that is not one of the two focal categories. */
+    nonFocalLabel: 'Anything else',
+    watchForLabel: 'Watch for',
   },
-  transition: {
-    heading: 'Nice work—the categories are switching.',
-    body: 'Take a moment to notice the new positions before continuing.',
-    practiceLabel: 'Some practice trials with the new pairing:',
-    startFinalButton: 'Start final round',
+  blockIntro: {
+    heading: 'Watch for these two',
+    body: 'Tap the right side when the word belongs to one of them, and the left side for anything else.',
+    changedNote: 'One of the two has changed since the last round.',
+    startButton: 'Start this round',
   },
   interruption: {
     message: 'It looks like the activity was interrupted. You can continue, but some responses may not be counted.',
@@ -133,12 +154,7 @@ export const CONTENT = {
   result: {
     heading: 'Your result',
     /** The topic-specific sentences live on each activity; this one does not vary. */
-    incomplete: 'There were not enough usable responses to compare the two pairings.',
-    strengths: {
-      slight: 'slightly',
-      moderate: 'moderately',
-      strong: 'markedly',
-    },
+    incomplete: 'There were not enough usable responses to compare the two halves of the activity.',
     /**
      * Shown on every result, whatever the outcome, and placed *above* the
      * result sentence rather than below it. People read this page alone, with
@@ -150,7 +166,7 @@ export const CONTENT = {
      */
     chanceNoteHeading: 'Before you read this',
     chanceNote:
-      'Some of what follows is chance. A short activity like this is not a stable measure of a person—repeat it another day and many people land somewhere different. Response times also move with attention, tiredness, reading speed, how familiar the words feel, your device, and which pairing you happened to see first.',
+      'Some of what follows is chance. A short activity like this is not a stable measure of a person—repeat it another day and many people land somewhere different. Response times also move with attention, tiredness, reading speed, how familiar the words feel, your device, and which pair of categories you happened to see first.',
     disclaimer:
       'This does not mean you consciously hold any particular belief about neurodivergent people. It describes your response times during one short activity, and nothing more.',
     whatDoesThisMeanToggle: 'What does this mean?',
@@ -160,26 +176,19 @@ export const CONTENT = {
     qualityWarning:
       'Something about this session makes the comparison less dependable than usual. Treat it as a rough impression.',
     /**
-     * The number itself sits behind this toggle rather than on the page. A
-     * bare "0.42" invites more precision than the activity can support, and a
-     * reader on their own has nobody to tell them otherwise.
+     * Why the page names a direction and stops.
+     *
+     * The conventional slight / moderate / strong labels are effect-size
+     * conventions: they describe how large a gap is. One sitting of a short
+     * activity cannot support a size, and a reader on their own has nobody to
+     * tell them that a "moderate" is not a moderate anything. Naming which way
+     * the times ran is the most this can carry, so it is all it says.
      */
-    scoreToggle: 'More detail: how the strength is worked out',
-    scoreExplanation:
-      'This activity is scored with a D-score, the standard measure for this kind of task. It compares your two rounds against how much your own response times varied, so a quick, consistent responder and a slower, more erratic one can be described on the same scale—the same gap in milliseconds can be a strong result for one person and a slight one for another.',
-    scoreBandsIntro: 'The wording above comes from where your score falls:',
-    scoreBands: [
-      'Under 0.15 — little or none',
-      '0.15 to 0.34 — slight',
-      '0.35 to 0.64 — moderate',
-      '0.65 and above — strong',
-    ],
-    scoreCaveat:
-      'These labels describe how large a gap is. They say nothing about whether it would appear again if you took the activity a second time.',
-    scoreYours: 'Your score',
+    noStrengthNote:
+      'This says which way your response times ran, not how big the difference was. A single short activity cannot support a size, so none is given.',
     comparisonHeading: 'Response time comparison',
-    detailHeading: 'Round detail',
-    differenceLabel: 'Difference between pairings',
+    detailHeading: 'Detail',
+    differenceLabel: 'Difference between the two',
     labels: {
       meanRow: 'Average response time',
       accuracyRow: 'Right first time',
